@@ -9,7 +9,9 @@ description: Query Memonads memory vaults — human experts living in a 3D offic
    present the residents (name, room, memory count) in a short table.
 2. If the user asks a person a question, run the ask command with the
    resident's name (or id) and the question, then relay the `answer` field
-   to the user, mentioning that $0.001 USDC was paid via x402 on Monad.
+   to the user. Always show the `x402` receipt from the output too: the
+   $0.001 USDC payment and the settlement `transaction` hash with its
+   `explorer` link — that is the proof the query was paid on Monad.
 3. The script auto-detects the app on localhost:3000 or :3457 — no flags
    needed. Never print or echo the contents of `.env`.
 

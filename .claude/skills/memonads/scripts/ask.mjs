@@ -9,7 +9,7 @@
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { wrapFetchWithPaymentFromConfig } from "@x402/fetch";
+import { decodePaymentResponseHeader, wrapFetchWithPaymentFromConfig } from "@x402/fetch";
 import { ExactEvmScheme } from "@x402/evm";
 import { privateKeyToAccount } from "viem/accounts";
 
@@ -90,4 +90,26 @@ if (!res.ok) {
   }
   process.exit(1);
 }
-console.log(JSON.stringify(body, null, 2));
+
+// surface the x402 settlement receipt (X-PAYMENT-RESPONSE header)
+let x402 = null;
+let receiptHeader = null;
+for (const [name, value] of res.headers.entries()) {
+  if (name.toLowerCase().includes("payment")) receiptHeader = value;
+}
+if (receiptHeader) {
+  try {
+    const receipt = decodePaymentResponseHeader(receiptHeader);
+    const tx = receipt.transaction ?? receipt.txHash;
+    x402 = {
+      paid: "$0.001 USDC",
+      network: "Monad Testnet (eip155:10143)",
+      payer: receipt.payer,
+      transaction: tx,
+      explorer: tx ? `https://testnet.monadexplorer.com/tx/${tx}` : undefined,
+    };
+  } catch {
+    x402 = { paid: "$0.001 USDC", note: "settled, receipt header could not be decoded" };
+  }
+}
+console.log(JSON.stringify({ ...body, x402 }, null, 2));
