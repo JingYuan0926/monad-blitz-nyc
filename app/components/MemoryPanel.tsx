@@ -148,7 +148,7 @@ export default function MemoryPanel({
               : "text-slate-400 hover:bg-slate-800 hover:text-white"
           }`}
         >
-          Spawn people
+          Move in
         </button>
         <button
           onClick={() => setTab("edit")}
