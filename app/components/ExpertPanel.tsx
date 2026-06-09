@@ -25,6 +25,7 @@ function Stars({ value, onChange }: { value: number; onChange?: (v: number) => v
 
 export default function ExpertPanel({
   expert,
+  mine,
   balance,
   extraReviews,
   vaultMemories,
@@ -34,6 +35,8 @@ export default function ExpertPanel({
   onClose,
 }: {
   expert: Expert;
+  /** you own this person — sessions are free and you can't review them */
+  mine: boolean;
   balance: number;
   /** reviews recorded on-chain for this expert */
   extraReviews: Review[];
@@ -158,7 +161,7 @@ Be practical and concise (2-4 sentences).`;
             <span style={{ color: section?.color }}>{section?.name}</span>
           </p>
         </div>
-        {stage === "chat" && (
+        {stage === "chat" && !mine && (
           <button
             onClick={() => setReviewOpen((o) => !o)}
             className={`shrink-0 rounded-full border px-2.5 py-1 text-xs cursor-pointer transition-colors ${
@@ -220,12 +223,14 @@ Be practical and concise (2-4 sentences).`;
 
             <button
               onClick={handlePay}
-              disabled={balance < expert.priceCredits}
+              disabled={!mine && balance < expert.priceCredits}
               className="w-full rounded-xl bg-violet-600 hover:bg-violet-500 disabled:opacity-40 disabled:cursor-not-allowed py-3 font-semibold transition-colors cursor-pointer"
             >
-              Pay {expert.priceCredits.toLocaleString()} credits · Start Talking
+              {mine
+                ? "Your person · Talk for free"
+                : `Pay ${expert.priceCredits.toLocaleString()} credits · Start Talking`}
             </button>
-            {balance < expert.priceCredits && (
+            {!mine && balance < expert.priceCredits && (
               <p className="text-xs text-red-400 text-center">Not enough credits — top up your balance.</p>
             )}
             {payError && (

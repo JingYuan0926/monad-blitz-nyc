@@ -166,6 +166,12 @@ export default function Home() {
   const payAddressOf = (e: Expert): `0x${string}` =>
     expertOwners[e.id] ?? expertAddress(e.id);
 
+  // your own people talk to you for free
+  const isMine = (e: Expert) =>
+    isConnected
+      ? expertOwners[e.id]?.toLowerCase() === address?.toLowerCase()
+      : e.id.startsWith("local-");
+
   const selectedExpertAddr = selected ? payAddressOf(selected) : ZERO_ADDRESS;
   const { data: chainReviews, refetch: refetchReviews } = useReadContract({
     address: MEMONADS_ADDRESS,
@@ -205,6 +211,7 @@ export default function Home() {
 
   // pay for a session with the currently open expert
   const pay = async (amountCredits: number): Promise<boolean> => {
+    if (selected && isMine(selected)) return true; // owners chat with their own people free
     if (isConnected) {
       if (!selected || (credits ?? BigInt(0)) < BigInt(amountCredits)) return false;
       try {
@@ -445,6 +452,7 @@ export default function Home() {
         <ExpertPanel
           key={selected.id}
           expert={selected}
+          mine={isMine(selected)}
           balance={balanceCredits}
           extraReviews={onChainReviews}
           vaultMemories={selectedVault}
