@@ -25,3 +25,19 @@ body {
   color: var(--foreground);
   font-family: var(--font-pixel), "Pixelify Sans", Arial, Helvetica, sans-serif;
 }
+
+/* hotel news feed: new entries slide in from the bottom */
+@keyframes news-in {
+  from {
+    transform: translateY(14px);
+    opacity: 0;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+
+.news-item {
+  animation: news-in 0.5s ease-out;
+}

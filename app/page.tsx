@@ -11,6 +11,7 @@ import ExpertPanel from "./components/ExpertPanel";
 import Low from "./components/Low";
 import SideBar from "./components/SideBar";
 import MemoryPanel, { type MemoryEntry } from "./components/MemoryPanel";
+import NewsFeed from "./components/NewsFeed";
 import type { NearTarget } from "./components/OfficeScene";
 import type { Expert } from "./data/experts";
 
@@ -176,17 +177,22 @@ export default function Home() {
       {/* wallet + credits */}
       <div className="pointer-events-auto absolute right-4 top-4 flex flex-col items-end gap-2">
         <ConnectButton showBalance chainStatus="full" accountStatus="address" />
-        <div className="flex w-fit items-center gap-2 rounded-xl border border-slate-700 bg-slate-900/90 px-3 py-2 text-sm text-slate-100">
-          <span className="text-violet-400 font-semibold">
-            {balanceCredits.toLocaleString()} credits
-          </span>
-          <button
-            onClick={topUp}
-            disabled={topUpPending}
-            className="rounded-md bg-violet-600 hover:bg-violet-500 disabled:opacity-50 px-2 py-0.5 text-xs font-semibold cursor-pointer"
-          >
-            {topUpPending ? "Confirming…" : isConnected ? "+ Top up 1 MON" : "+ Top up"}
-          </button>
+        {/* the credits badge sets the width; the news box stretches to match it */}
+        <div className="flex w-fit flex-col items-stretch gap-2">
+          <div className="flex items-center justify-between gap-2 rounded-xl border border-slate-700 bg-slate-900/90 px-3 py-2 text-sm text-slate-100">
+            <span className="text-violet-400 font-semibold">
+              {balanceCredits.toLocaleString()} credits
+            </span>
+            <button
+              onClick={topUp}
+              disabled={topUpPending}
+              className="rounded-md bg-violet-600 hover:bg-violet-500 disabled:opacity-50 px-2 py-0.5 text-xs font-semibold cursor-pointer"
+            >
+              {topUpPending ? "Confirming…" : isConnected ? "+ Top up 1 MON" : "+ Top up"}
+            </button>
+          </div>
+          {/* hotel news ticker */}
+          <NewsFeed />
         </div>
       </div>
 
