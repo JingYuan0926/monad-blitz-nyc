@@ -13,10 +13,10 @@ import { buildPersona, loadExpertVault } from "@/lib/agent";
 
 const FACILITATOR_URL = "https://x402-facilitator.molandak.org";
 const MONAD_TESTNET = "eip155:10143";
-// $0.01 in Monad Testnet USDC (6 decimals) — the package has no built-in
+// $0.001 in Monad Testnet USDC (6 decimals) — the package has no built-in
 // asset registry entry for Monad, so the asset is spelled out explicitly
 const PRICE = {
-  amount: "10000",
+  amount: "1000",
   asset: "0x534b2f3A21130d7a60830c2Df862319e593943A3",
   extra: { name: "USDC", version: "2" },
 };

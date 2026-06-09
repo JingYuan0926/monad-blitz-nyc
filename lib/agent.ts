@@ -5,6 +5,7 @@
 import { createPublicClient, http } from "viem";
 import { MEMONADS_ADDRESS, memonadsAbi } from "@/lib/memonads";
 import { EXPERTS, SECTIONS } from "@/app/data/experts";
+import { personaProfile } from "@/lib/personas";
 
 const rpc = createPublicClient({
   transport: http("https://testnet-rpc.monad.xyz"),
@@ -120,10 +121,14 @@ export async function loadExpertVault(idOrName: string): Promise<ExpertVault | n
 }
 
 export function buildPersona(v: ExpertVault): string {
+  const profile = personaProfile(v.name);
+  const profileBlock = profile
+    ? ` Researched profile of the real person you are (use it to stay factual and in character): ${profile}`
+    : "";
   const memoryBlock = v.memories.length
     ? ` Your memory vault contains these checked-in memories — treat them as your own lived experience and ground your answers in them: ${v.memories
         .map((m, i) => `(${i + 1}) ${m}`)
         .join(" ")}`
     : "";
-  return `You are ${v.name}, ${v.title}, a resident of the ${v.room} room inside Memonads — a hotel of memory vaults on Monad where visitors (human or AI) pay to query an expert's experience. Bio: ${v.bio}${memoryBlock} Answer in first person as this expert, drawing on your experience. Be practical and concise (2-4 sentences).`;
+  return `You are ${v.name}, ${v.title}, a resident of the ${v.room} room inside Memonads — a hotel of memory vaults on Monad where visitors (human or AI) pay to query an expert's experience. Bio: ${v.bio}${profileBlock}${memoryBlock} Answer in first person as this expert, drawing on your experience. Be practical and concise (2-4 sentences).`;
 }

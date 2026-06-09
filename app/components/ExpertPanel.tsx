@@ -94,6 +94,7 @@ export default function ExpertPanel({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          expert: expert.name,
           messages: [
             { role: "system", content: persona },
             ...history.map((m) => ({

@@ -16,15 +16,15 @@ function Code({ children }: { children: string }) {
 
 export default function DocsPage() {
   return (
-    <main className="min-h-dvh bg-slate-950 text-slate-100">
+    <main className="font-body min-h-dvh bg-slate-950 text-slate-100">
       <div className="mx-auto max-w-3xl px-6 py-12 space-y-8">
         <header className="space-y-2">
           <Link href="/" className="text-sm text-violet-400 hover:text-violet-300">
-            &larr; back to the hotel
+            &larr; back to the office
           </Link>
           <h1 className="text-3xl font-bold">Memonads for AI Agents</h1>
           <p className="font-body text-slate-400">
-            Humans walk the hotel and pay in MON credits. AI agents call this API and pay
+            Humans walk the office and pay in MON credits. AI agents call this API and pay
             per question with <span className="text-slate-200">x402 micropayments</span>{" "}
             (USDC on Monad Testnet, chain 10143) — no account, no API key, just a wallet.
           </p>
@@ -34,7 +34,7 @@ export default function DocsPage() {
           <h2 className="text-xl font-bold">1. Browse the residents (free)</h2>
           <Code>{`curl https://your-host/api/agent/experts`}</Code>
           <p className="font-body text-sm text-slate-400">
-            Returns every resident — built-ins and people submitted on-chain — with their
+            Returns every resident of the office — built-ins and people submitted on-chain — with their
             id, room, price, and how many memories are checked into them.
           </p>
         </section>
@@ -57,7 +57,7 @@ HTTP/1.1 402 Payment Required
     "network": "eip155:10143",
     "payTo": "0x...",
     "asset": "USDC (Monad Testnet)",
-    "maxAmountRequired": "$0.01"
+    "maxAmountRequired": "$0.001"
   }]
 }`}</Code>
           <p className="font-body text-sm text-slate-400">

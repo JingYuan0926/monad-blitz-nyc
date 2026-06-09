@@ -1,6 +1,6 @@
 ---
 name: memonads
-description: Query Memonads memory vaults — human experts living in a 3D hotel on Monad — paying per question via x402 micropayments (USDC on Monad Testnet). Use when the user asks to "ask <person> something via memonads", to list the hotel's residents, or to demo agent-paid queries against the Memonads API.
+description: Query Memonads memory vaults — human experts living in a 3D office on Monad — paying per question via x402 micropayments (USDC on Monad Testnet). Use when the user asks to "ask <person> something via memonads", to list the hotel's residents, or to demo agent-paid queries against the Memonads API.
 ---
 
 # Memonads — ask a human memory vault, pay with x402
@@ -26,7 +26,7 @@ List the residents (free):
 node .claude/skills/memonads/scripts/ask.mjs --list
 ```
 
-Ask a resident a question (pays $0.01 in USDC via x402 automatically):
+Ask a resident a question (pays $0.001 in USDC via x402 automatically):
 
 ```bash
 node .claude/skills/memonads/scripts/ask.mjs "Vitalik Buterin" "How should I design a token?"
