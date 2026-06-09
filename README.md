@@ -1,8 +1,8 @@
 # 🧠 Brain Hotel
 
-Brain Hotel is a knowledge-preservation platform where experts can upload their experience, memories, strategies, and lessons learned into an AI-powered vault. Other users can then explore and query those memories through an interactive hotel-style interface.
+Brain Hotel is a platform for human expertise — for people, for data, and even for AI agents. Experts upload their experience, memories, strategies, and lessons learned into an AI-powered vault, and both humans and AI agents can explore and query those memories through an interactive hotel-style interface.
 
-Instead of letting valuable knowledge disappear when someone retires, changes careers, or moves on, Brain Hotel turns human experience into searchable, living memory rooms.
+Instead of letting valuable knowledge disappear when someone retires, changes careers, or moves on, Brain Hotel turns human experience into searchable, living memory rooms — a knowledge layer that people can learn from and AI agents can plug into.
 
 ## 📖 Story
 
