@@ -176,7 +176,7 @@ function SpeechBubble({ text, position }: { text: string; position: [number, num
   const { texture, aspect } = useMemo(() => {
     const canvas = document.createElement("canvas");
     const ctx = canvas.getContext("2d")!;
-    const font = "500 40px 'Pixelify Sans', 'Arial', sans-serif";
+    const font = "500 40px 'Geist', 'Arial', sans-serif";
     const maxWidth = 560;
     const pad = 30;
     const lineHeight = 52;

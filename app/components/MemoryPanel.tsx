@@ -88,14 +88,14 @@ export default function MemoryPanel({
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             placeholder="Title — e.g. How I pick hackathon ideas"
-            className="w-full rounded-md bg-slate-900 border border-slate-700 px-2 py-1.5 text-sm outline-none focus:border-violet-500"
+            className="font-body w-full rounded-md bg-slate-900 border border-slate-700 px-2 py-1.5 text-sm outline-none focus:border-violet-500"
           />
           <textarea
             value={text}
             onChange={(e) => setText(e.target.value)}
             placeholder="The memory itself — what happened, what you learned, what you'd do differently…"
             rows={4}
-            className="w-full resize-none rounded-md bg-slate-900 border border-slate-700 px-2 py-1.5 text-sm outline-none focus:border-violet-500"
+            className="font-body w-full resize-none rounded-md bg-slate-900 border border-slate-700 px-2 py-1.5 text-sm outline-none focus:border-violet-500"
           />
           <button
             onClick={save}
@@ -130,7 +130,7 @@ export default function MemoryPanel({
                       🗑
                     </button>
                   </p>
-                  <p className="text-slate-400 mt-1">{m.text}</p>
+                  <p className="font-body text-slate-400 mt-1">{m.text}</p>
                 </li>
               ))}
             </ul>
