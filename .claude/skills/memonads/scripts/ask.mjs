@@ -32,8 +32,24 @@ loadEnv();
 
 const args = process.argv.slice(2);
 const urlFlag = args.indexOf("--url");
-const baseUrl =
-  urlFlag >= 0 ? args.splice(urlFlag, 2)[1] : process.env.MEMONADS_URL ?? "http://localhost:3000";
+
+async function detectBaseUrl() {
+  if (urlFlag >= 0) return args.splice(urlFlag, 2)[1];
+  if (process.env.MEMONADS_URL) return process.env.MEMONADS_URL;
+  for (const candidate of ["http://localhost:3000", "http://localhost:3457"]) {
+    try {
+      const res = await fetch(`${candidate}/api/agent/experts`, {
+        signal: AbortSignal.timeout(2000),
+      });
+      if (res.ok) return candidate;
+    } catch {
+      // not running here — try the next port
+    }
+  }
+  console.error("Memonads app not reachable on :3000 or :3457 — is `npm run dev` running?");
+  process.exit(1);
+}
+const baseUrl = await detectBaseUrl();
 
 if (args[0] === "--list") {
   const res = await fetch(`${baseUrl}/api/agent/experts`);

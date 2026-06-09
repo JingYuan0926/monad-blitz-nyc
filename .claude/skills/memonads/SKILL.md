@@ -1,7 +1,17 @@
 ---
 name: memonads
-description: Query Memonads memory vaults — human experts living in a 3D office on Monad — paying per question via x402 micropayments (USDC on Monad Testnet). Use when the user asks to "ask <person> something via memonads", to list the hotel's residents, or to demo agent-paid queries against the Memonads API.
+description: Query Memonads memory vaults — human experts living in a 3D office on Monad — paying per question via x402 micropayments (USDC on Monad Testnet). Use whenever the user wants to ask a Memonads resident something (e.g. "/memonads ask Vitalik how to design a token", "ask Vitalik Buterin about X"), list the residents, or demo agent-paid queries.
 ---
+
+## How to fulfil a request
+
+1. If the user wants the resident list, run the `--list` command below and
+   present the residents (name, room, memory count) in a short table.
+2. If the user asks a person a question, run the ask command with the
+   resident's name (or id) and the question, then relay the `answer` field
+   to the user, mentioning that $0.001 USDC was paid via x402 on Monad.
+3. The script auto-detects the app on localhost:3000 or :3457 — no flags
+   needed. Never print or echo the contents of `.env`.
 
 # Memonads — ask a human memory vault, pay with x402
 
