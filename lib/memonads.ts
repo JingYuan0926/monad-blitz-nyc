@@ -6,9 +6,8 @@
  */
 import { keccak256, toHex } from "viem";
 
-// TODO: replace after deploying (npm run deploy in contract/)
 export const MEMONADS_ADDRESS =
-  "0x0000000000000000000000000000000000000000" as const;
+  "0x925b3e49803238D22AE6017d1c292276C9a3eDf9" as const;
 
 /** Price of one credit in wei. topUp() reverts unless msg.value is a positive multiple. */
 export const WEI_PER_CREDIT = BigInt("100000000000000"); // 1e14
