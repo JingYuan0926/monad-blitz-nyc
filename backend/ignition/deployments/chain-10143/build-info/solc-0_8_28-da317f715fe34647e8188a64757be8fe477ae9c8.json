@@ -1,0 +1,49 @@
+{
+  "_format": "hh3-sol-build-info-1",
+  "id": "solc-0_8_28-da317f715fe34647e8188a64757be8fe477ae9c8",
+  "solcVersion": "0.8.28",
+  "solcLongVersion": "0.8.28+commit.7893614a",
+  "compilerType": "solc",
+  "toolVersions": {
+    "hardhat": "3.9.0"
+  },
+  "userSourceNameMap": {
+    "contracts/AIQueryCredits.sol": "project/contracts/AIQueryCredits.sol"
+  },
+  "input": {
+    "language": "Solidity",
+    "settings": {
+      "evmVersion": "cancun",
+      "optimizer": {
+        "enabled": true,
+        "runs": 200
+      },
+      "outputSelection": {
+        "*": {
+          "": [
+            "ast"
+          ],
+          "*": [
+            "abi",
+            "evm.bytecode.linkReferences",
+            "evm.bytecode.object",
+            "evm.bytecode.opcodes",
+            "evm.bytecode.sourceMap",
+            "evm.deployedBytecode.immutableReferences",
+            "evm.deployedBytecode.linkReferences",
+            "evm.deployedBytecode.object",
+            "evm.deployedBytecode.opcodes",
+            "evm.deployedBytecode.sourceMap",
+            "evm.methodIdentifiers"
+          ]
+        }
+      },
+      "remappings": []
+    },
+    "sources": {
+      "project/contracts/AIQueryCredits.sol": {
+        "content": "// SPDX-License-Identifier: MIT\npragma solidity ^0.8.24;\n\n/// @title AIQueryCredits\n/// @notice Prepaid credits for AI queries, backed 1:1 by MON held in this\n///         contract. There is no admin and no fees: every credit minted is\n///         redeemable for exactly the MON that paid for it.\n///\n///         - `topUp()` mints 10,000 credits per 1 MON sent (proportional for\n///           fractional amounts; 1 credit costs 0.0001 MON).\n///         - `consume(amount)` burns credits off the caller's balance and\n///           emits `CreditsConsumed` for the backend watcher.\n///         - `withdraw(credits)` burns credits and returns the proportional\n///           MON to the caller.\ncontract AIQueryCredits {\n    /// @notice Credits minted per 1 MON deposited.\n    uint256 public constant CREDITS_PER_MON = 10_000;\n\n    /// @notice Price of a single credit in wei (1e14 wei = 0.0001 MON).\n    uint256 public constant WEI_PER_CREDIT = 1 ether / CREDITS_PER_MON;\n\n    /// @notice Credit balance per user.\n    mapping(address => uint256) public credits;\n\n    /// @notice Emitted when a user deposits MON for credits.\n    event CreditsToppedUp(address indexed user, uint256 amount, uint256 paidWei);\n\n    /// @notice Emitted when a user spends credits; watched by the backend.\n    event CreditsConsumed(address indexed user, uint256 amount, uint256 remaining);\n\n    /// @notice Emitted when a user redeems credits back into MON.\n    event CreditsWithdrawn(address indexed user, uint256 amount, uint256 refundWei);\n\n    /// @dev A zero value/amount was provided.\n    error ZeroAmount();\n\n    /// @dev `msg.value` is not an exact multiple of `WEI_PER_CREDIT`; this\n    ///      prevents wei dust from being trapped in the contract (no fees).\n    error NonIntegralTopUp(uint256 valueWei);\n\n    /// @dev The caller's credit balance cannot cover the request.\n    error InsufficientCredits(uint256 requested, uint256 available);\n\n    /// @dev The MON refund transfer failed.\n    error WithdrawTransferFailed();\n\n    /// @notice Deposit MON and receive credits at 10,000 credits per 1 MON.\n    /// @dev `msg.value` must be a positive multiple of 0.0001 MON so the\n    ///      conversion is exact and no dust is ever kept by the contract.\n    function topUp() external payable {\n        if (msg.value == 0) revert ZeroAmount();\n        if (msg.value % WEI_PER_CREDIT != 0) revert NonIntegralTopUp(msg.value);\n\n        uint256 minted = msg.value / WEI_PER_CREDIT;\n        credits[msg.sender] += minted;\n\n        emit CreditsToppedUp(msg.sender, minted, msg.value);\n    }\n\n    /// @notice Spend `amount` credits from the caller's balance.\n    /// @dev Emits `CreditsConsumed` so an off-chain watcher can grant queries.\n    function consume(uint256 amount) external {\n        if (amount == 0) revert ZeroAmount();\n\n        uint256 balance = credits[msg.sender];\n        if (amount > balance) revert InsufficientCredits(amount, balance);\n\n        uint256 remaining;\n        unchecked {\n            remaining = balance - amount;\n        }\n        credits[msg.sender] = remaining;\n\n        emit CreditsConsumed(msg.sender, amount, remaining);\n    }\n\n    /// @notice Burn `amount` credits and return the proportional MON.\n    function withdraw(uint256 amount) external {\n        if (amount == 0) revert ZeroAmount();\n\n        uint256 balance = credits[msg.sender];\n        if (amount > balance) revert InsufficientCredits(amount, balance);\n\n        unchecked {\n            credits[msg.sender] = balance - amount;\n        }\n        uint256 refundWei = amount * WEI_PER_CREDIT;\n\n        emit CreditsWithdrawn(msg.sender, amount, refundWei);\n\n        (bool ok, ) = msg.sender.call{value: refundWei}(\"\");\n        if (!ok) revert WithdrawTransferFailed();\n    }\n}\n"
+      }
+    }
+  }
+}

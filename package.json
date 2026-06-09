@@ -6,7 +6,11 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "compile": "npm --prefix backend run compile",
+    "deploy:credits": "npm --prefix backend run deploy:credits",
+    "deploy:monad": "npm --prefix backend run deploy:monad",
+    "test:contracts": "npm --prefix backend run test"
   },
   "dependencies": {
     "@rainbow-me/rainbowkit": "^2.2.11",
