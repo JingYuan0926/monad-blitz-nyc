@@ -4,7 +4,7 @@ Memonads is a platform for human expertise — for people, for data, and even fo
 
 Instead of letting valuable knowledge disappear when someone retires, changes careers, or moves on, Memonads turns human experience into searchable, living memory rooms — a knowledge layer that people can learn from and AI agents can plug into.
 
-## 📖 Story
+## Story
 
 Imagine a person named Jason.
 
@@ -24,7 +24,7 @@ Their experience is incredibly valuable, but most of it is never properly captur
 
 Memonads solves this by giving every expert a place to store their mind.
 
-## ❗ Problem
+## Problem
 
 Human experience is one of the most valuable forms of knowledge, but it is often lost when people retire, change jobs, or leave a community.
 
@@ -41,7 +41,7 @@ However, this knowledge is usually scattered across documents, chats, videos, no
 
 The result is a major knowledge gap between experienced people and beginners.
 
-## 💡 Solution
+## Solution
 
 Memonads is a platform where users can upload their knowledge, experience, notes, documents, videos, and stories. The platform automatically turns this content into a structured AI memory vault, similar to an Obsidian vault.
 
@@ -69,7 +69,7 @@ For example:
 
 If users want to learn from Jason, they go to Level 2 and enter Jason's room.
 
-## 🏨 Product Concept
+## Product Concept
 
 Memonads makes knowledge feel explorable.
 
@@ -81,7 +81,7 @@ The experience is designed to feel like:
 
 > "Walking into someone's brain and learning directly from their memories."
 
-## 🏗️ Architecture
+## Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -130,7 +130,7 @@ The experience is designed to feel like:
           └────────────────────────────────────────────┘
 ```
 
-## 🛠️ Tech Stack
+## Tech Stack
 
 | Layer | Technology |
 | --- | --- |
@@ -150,7 +150,7 @@ The experience is designed to feel like:
 - **AIQueryCredits contract:** Users deposit MON → get tokens (10,000 tokens/MON) → `consume()` emits events the backend can watch → `withdraw()` to reclaim MON. No admin, no fees.
 - **Wallet:** Injected wallet only (MetaMask etc.) via Wagmi, scoped exclusively to Monad Testnet.
 
-## 🚀 Getting Started
+## Getting Started
 
 Install dependencies:
 

@@ -23,7 +23,6 @@ export type Expert = {
 export type Section = {
   id: string;
   name: string;
-  emoji: string;
   color: string; // rug / accent color
   floorColor: string;
   position: [number, number, number]; // room center in the office
@@ -33,7 +32,6 @@ export const SECTIONS: Section[] = [
   {
     id: "coding",
     name: "Blockchain",
-    emoji: "⛓️",
     color: "#6366f1",
     floorColor: "#46519e",
     position: [-10, 0, -4],
@@ -41,7 +39,6 @@ export const SECTIONS: Section[] = [
   {
     id: "science",
     name: "Science",
-    emoji: "🔬",
     color: "#10b981",
     floorColor: "#5e9b80",
     position: [0, 0, -4],
@@ -49,7 +46,6 @@ export const SECTIONS: Section[] = [
   {
     id: "sport",
     name: "Sport",
-    emoji: "🏀",
     color: "#f59e0b",
     floorColor: "#c0985f",
     position: [10, 0, -4],

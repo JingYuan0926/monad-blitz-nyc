@@ -137,9 +137,7 @@ export default function ExpertPanel({
           <p className="text-sm text-slate-400 truncate">{expert.title}</p>
           <p className="text-xs mt-0.5">
             <Stars value={expert.rating} /> {expert.rating} · {expert.sessions} sessions ·{" "}
-            <span style={{ color: section?.color }}>
-              {section?.emoji} {section?.name}
-            </span>
+            <span style={{ color: section?.color }}>{section?.name}</span>
           </p>
         </div>
         {stage === "chat" && (

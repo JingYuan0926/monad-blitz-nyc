@@ -26,7 +26,6 @@ function CreditsBadge() {
 
   return (
     <span className="flex items-center gap-1.5 rounded-full border border-black/[.08] bg-zinc-50 px-3 py-1.5 text-sm font-medium text-black dark:border-white/[.145] dark:bg-zinc-900 dark:text-zinc-50">
-      <span aria-hidden>⚡</span>
       {isLoading || balance === undefined
         ? "…"
         : `${balance.toLocaleString()} credits`}

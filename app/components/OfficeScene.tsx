@@ -78,8 +78,8 @@ function blocked(x: number, z: number) {
 
 /* ================= Behaviors =================
    Each room mixes activities so it feels alive:
-   working = at their desk/computer, talking = chatting in pairs (💬),
-   resting = on the sofa (💤), wandering = strolling around the room. */
+   working = at their desk/computer, talking = chatting in pairs,
+   resting = on the sofa, wandering = strolling around the room. */
 
 type Behavior = {
   kind: "working" | "talking" | "resting" | "wandering";
@@ -92,7 +92,7 @@ function deskX(cx: number, i: number) {
   return cx + (i - 1) * 3;
 }
 
-const BEHAVIORS: Record<string, Behavior> = (() => {
+const STATIC_BEHAVIORS: Record<string, Behavior> = (() => {
   const map: Record<string, Behavior> = {};
   for (const section of SECTIONS) {
     const [cx] = section.position;
@@ -746,7 +746,7 @@ function Reception({ active }: { active: boolean }) {
         <ringGeometry args={[0.5, 0.65, 32]} />
         <meshBasicMaterial color={active ? "#ffffff" : "#8b5cf6"} transparent opacity={active ? 0.9 : 0.45} />
       </mesh>
-      <Label text="🛎 RECEPTION" position={[0, 2.5, 0]} height={0.3} color="#fbbf24" />
+      <Label text="RECEPTION" position={[0, 2.5, 0]} height={0.3} color="#fbbf24" />
       <Label text="check in your memories" position={[0, 2.2, 0]} height={0.17} color="#e2e8f0" />
     </group>
   );
@@ -814,7 +814,7 @@ function Elevator() {
           <meshStandardMaterial color="#aab2bd" metalness={0.5} roughness={0.35} />
         </mesh>
       ))}
-      <Label text="🛗 ELEVATOR" position={[0.3, 2.55, 0]} height={0.24} color="#e2e8f0" />
+      <Label text="ELEVATOR" position={[0.3, 2.55, 0]} height={0.24} color="#e2e8f0" />
       <Label text="floors 2-4 coming soon" position={[0.3, 2.28, 0]} height={0.14} color="#94a3b8" />
     </group>
   );
@@ -977,14 +977,9 @@ function Receptionist() {
 
 /* ================= Expert NPC with behavior ================= */
 
-const WORK_BUBBLE: Record<string, string> = {
-  coding: "⌨️",
-  science: "🧪",
-  sport: "🏋️",
-};
-
 function ExpertAvatar({
   expert,
+  behavior,
   index,
   active,
   bubbleText,
@@ -992,13 +987,13 @@ function ExpertAvatar({
   positionsRef,
 }: {
   expert: Expert;
+  behavior: Behavior;
   index: number;
   active: boolean;
   bubbleText: string | null;
   onSelect: (e: Expert) => void;
   positionsRef: React.MutableRefObject<Record<string, { x: number; z: number }>>;
 }) {
-  const behavior = BEHAVIORS[expert.id];
   const section = SECTIONS.find((s) => s.id === expert.sectionId)!;
   const cx = section.position[0];
   // safe stroll area: clear of the bed (west), workstations (north) and sofa (east)
@@ -1006,7 +1001,6 @@ function ExpertAvatar({
 
   const group = useRef<Group>(null);
   const [hovered, setHovered] = useState(false);
-  const [atHome, setAtHome] = useState(true);
   useCursor(hovered);
 
   const movingRef = useRef(false);
@@ -1055,7 +1049,6 @@ function ExpertAvatar({
             z: bounds.minZ + Math.random() * (bounds.maxZ - bounds.minZ),
           };
           poseRef.current = "stand";
-          setAtHome(false);
         }
       } else if (mode.current === "stroll") {
         if (walkToward(target.current.x, target.current.z)) {
@@ -1070,7 +1063,6 @@ function ExpertAvatar({
         // wanderers barely pause at home; others settle in for a while
         modeUntil.current = t + (behavior.kind === "wandering" ? 1 + Math.random() * 2 : 7 + Math.random() * 10);
         poseRef.current = behavior.kind === "resting" ? "sit" : "stand";
-        setAtHome(true);
       }
     }
 
@@ -1082,17 +1074,6 @@ function ExpertAvatar({
     group.current.rotation.y = heading.current;
     positionsRef.current[expert.id] = { x: pos.current.x, z: pos.current.z };
   });
-
-  const bubble =
-    !lit && atHome
-      ? behavior.kind === "talking"
-        ? "💬"
-        : behavior.kind === "resting"
-          ? "💤"
-          : behavior.kind === "working"
-            ? WORK_BUBBLE[expert.sectionId]
-            : null
-      : null;
 
   return (
     <group
@@ -1127,7 +1108,6 @@ function ExpertAvatar({
           color="#fbbf24"
         />
       )}
-      {bubble && !bubbleText && <Label text={bubble} position={[0.32, 2.08, 0]} height={0.22} />}
       {bubbleText && <SpeechBubble text={bubbleText} position={[0, 2.45, 0]} />}
     </group>
   );
@@ -1136,12 +1116,14 @@ function ExpertAvatar({
 /* ================= Playable character ================= */
 
 function Player({
+  experts,
   paused,
   bubbleText,
   positionRef,
   expertPositionsRef,
   onNearChange,
 }: {
+  experts: Expert[];
   paused: boolean;
   bubbleText: string | null;
   positionRef: React.MutableRefObject<Vector3>;
@@ -1220,7 +1202,7 @@ function Player({
     // proximity check for "press E" (experts move, so read live positions)
     let nearest: NearTarget | null = null;
     let best = TALK_RADIUS;
-    for (const expert of EXPERTS) {
+    for (const expert of experts) {
       const p = expertPositionsRef.current[expert.id];
       if (!p) continue;
       const d = Math.hypot(p.x - pos.x, p.z - pos.z);
@@ -1329,7 +1311,7 @@ function SectionRoom({ section }: { section: Section }) {
   return (
     <group>
       <Label
-        text={`${section.emoji} ${section.name.toUpperCase()}`}
+        text={section.name.toUpperCase()}
         position={[cx, 3.1, -4]}
         height={0.6}
         color={section.color}
@@ -1480,6 +1462,7 @@ function Grounds() {
 /* ================= Scene root ================= */
 
 export default function OfficeScene({
+  experts,
   selectedId,
   paused,
   playerBubble,
@@ -1487,6 +1470,7 @@ export default function OfficeScene({
   onSelectExpert,
   onNearChange,
 }: {
+  experts: Expert[];
   selectedId: string | null;
   paused: boolean;
   playerBubble: string | null;
@@ -1494,6 +1478,19 @@ export default function OfficeScene({
   onSelectExpert: (e: Expert | null) => void;
   onNearChange: (t: NearTarget | null) => void;
 }) {
+  // built-in residents keep their scripted stations; spawned people wander their room
+  const behaviors = useMemo(() => {
+    const map: Record<string, Behavior> = { ...STATIC_BEHAVIORS };
+    let j = 0;
+    for (const e of experts) {
+      if (map[e.id]) continue;
+      const section = SECTIONS.find((sec) => sec.id === e.sectionId) ?? SECTIONS[0];
+      const cx = section.position[0];
+      map[e.id] = { kind: "wandering", x: cx - 1 + (j % 3) * 1.2, z: -1.5 - (j % 2), face: 0 };
+      j++;
+    }
+    return map;
+  }, [experts]);
   const playerPos = useRef(new Vector3(0, 0, 13));
   const expertPositions = useRef<Record<string, { x: number; z: number }>>({});
   const [near, setNear] = useState<NearTarget | null>(null);
@@ -1546,10 +1543,11 @@ export default function OfficeScene({
       ))}
       <Reception active={nearVault} />
       <Receptionist />
-      {EXPERTS.map((expert, i) => (
+      {experts.map((expert, i) => (
         <ExpertAvatar
           key={expert.id}
           expert={expert}
+          behavior={behaviors[expert.id]}
           index={i}
           active={selectedId === expert.id || nearExpertId === expert.id}
           bubbleText={expertBubble?.id === expert.id ? expertBubble.text : null}
@@ -1559,6 +1557,7 @@ export default function OfficeScene({
       ))}
 
       <Player
+        experts={experts}
         paused={paused}
         bubbleText={playerBubble}
         positionRef={playerPos}

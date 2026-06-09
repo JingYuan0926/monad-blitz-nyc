@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { parseEther } from "viem";
@@ -8,9 +8,9 @@ import { useAccount, usePublicClient, useReadContract, useWriteContract } from "
 import { monadTestnet } from "wagmi/chains";
 import { MEMONADS_ADDRESS, memonadsAbi, expertAddress } from "@/lib/memonads";
 import ExpertPanel from "./components/ExpertPanel";
-import MemoryPanel, { type MemoryEntry } from "./components/MemoryPanel";
+import MemoryPanel, { type MemoryEntry, type NewExpert } from "./components/MemoryPanel";
 import type { NearTarget } from "./components/OfficeScene";
-import type { Expert, Review } from "./data/experts";
+import { EXPERTS, SECTIONS, type Expert, type Review } from "./data/experts";
 
 const OfficeScene = dynamic(() => import("./components/OfficeScene"), {
   ssr: false,
@@ -28,6 +28,12 @@ function shortAddress(addr: string) {
   return `${addr.slice(0, 6)}…${addr.slice(-4)}`;
 }
 
+const SPAWN_COLORS = ["#f472b6", "#60a5fa", "#34d399", "#fbbf24", "#c084fc", "#f87171"];
+
+function validSection(section: string) {
+  return SECTIONS.some((s) => s.id === section) ? section : SECTIONS[0].id;
+}
+
 export default function Home() {
   const [selected, setSelected] = useState<Expert | null>(null);
   const [near, setNear] = useState<NearTarget | null>(null);
@@ -36,6 +42,7 @@ export default function Home() {
   const [expertBubble, setExpertBubble] = useState<{ id: string; text: string } | null>(null);
   const [mockCredits, setMockCredits] = useState(50_000);
   const [topUpPending, setTopUpPending] = useState(false);
+  const [localExperts, setLocalExperts] = useState<Expert[]>([]);
   const [localMemories, setLocalMemories] = useState<MemoryEntry[]>([
     {
       id: 1,
@@ -90,7 +97,50 @@ export default function Home() {
     query: { enabled: Boolean(address) },
   });
 
-  const selectedExpertAddr = selected ? expertAddress(selected.id) : ZERO_ADDRESS;
+  const { data: chainExpertList, refetch: refetchExperts } = useReadContract({
+    address: MEMONADS_ADDRESS,
+    abi: memonadsAbi,
+    functionName: "getExperts",
+    chainId: monadTestnet.id,
+    query: { enabled: isConnected, refetchInterval: 8_000 },
+  });
+
+  // spawned people walk the hotel beside the built-in residents;
+  // their sessions are paid to the owner wallet that submitted them
+  const { experts, expertOwners } = useMemo(() => {
+    const owners: Record<string, `0x${string}`> = {};
+    const spawned: Expert[] = (chainExpertList ?? [])
+      .map((e, i) => ({ e, i }))
+      .filter(({ e }) => e.active)
+      .map(({ e, i }) => {
+        const id = `chain-${i}`;
+        owners[id] = e.owner;
+        return {
+          id,
+          name: e.name,
+          title: e.title || "Resident Expert",
+          sectionId: validSection(e.section),
+          activity: "wandering" as const,
+          priceCredits: Number(e.priceCredits),
+          color: SPAWN_COLORS[i % SPAWN_COLORS.length],
+          bio: e.bio || `${e.name} recently checked into the hotel.`,
+          rating: 5.0,
+          sessions: 0,
+          reviews: [],
+        };
+      });
+    return {
+      experts: [...EXPERTS, ...(isConnected ? spawned : localExperts)],
+      expertOwners: owners,
+    };
+  }, [chainExpertList, isConnected, localExperts]);
+
+  // payments/reviews target the owner wallet for spawned people,
+  // a stable pseudo-address for built-in residents
+  const payAddressOf = (e: Expert): `0x${string}` =>
+    expertOwners[e.id] ?? expertAddress(e.id);
+
+  const selectedExpertAddr = selected ? payAddressOf(selected) : ZERO_ADDRESS;
   const { data: chainReviews, refetch: refetchReviews } = useReadContract({
     address: MEMONADS_ADDRESS,
     abi: memonadsAbi,
@@ -103,7 +153,15 @@ export default function Home() {
   const balanceCredits = isConnected ? Number(credits ?? BigInt(0)) : mockCredits;
 
   const writeAndWait = async (
-    functionName: "register" | "addMemory" | "deleteMemory" | "topUp" | "paySession" | "review",
+    functionName:
+      | "register"
+      | "addMemory"
+      | "editMemory"
+      | "deleteMemory"
+      | "topUp"
+      | "paySession"
+      | "review"
+      | "createExpert",
     args: readonly unknown[],
     value?: bigint
   ) => {
@@ -125,7 +183,7 @@ export default function Home() {
     if (isConnected) {
       if (!selected || (credits ?? BigInt(0)) < BigInt(amountCredits)) return false;
       try {
-        await writeAndWait("paySession", [expertAddress(selected.id), BigInt(amountCredits)]);
+        await writeAndWait("paySession", [payAddressOf(selected), BigInt(amountCredits)]);
         refetchCredits();
         return true;
       } catch {
@@ -142,7 +200,7 @@ export default function Home() {
   const postReview = async (rating: number, text: string): Promise<"chain" | "local" | false> => {
     if (!isConnected || !selected) return "local"; // demo mode: local only
     try {
-      await writeAndWait("review", [expertAddress(selected.id), rating, text]);
+      await writeAndWait("review", [selectedExpertAddr, rating, text]);
       refetchReviews();
       return "chain";
     } catch {
@@ -192,6 +250,49 @@ export default function Home() {
       }
       await writeAndWait("addMemory", [m.sectionId, m.title, m.text]);
       refetchMemories();
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
+  const editMemory = async (m: MemoryEntry): Promise<boolean> => {
+    if (!isConnected) {
+      setLocalMemories((list) => list.map((x) => (x.id === m.id ? m : x)));
+      return true;
+    }
+    try {
+      await writeAndWait("editMemory", [BigInt(m.id), m.sectionId, m.title, m.text]);
+      refetchMemories();
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
+  const createExpert = async (e: NewExpert): Promise<boolean> => {
+    if (!isConnected) {
+      setLocalExperts((list) => [
+        ...list,
+        {
+          id: `local-${Date.now()}`,
+          name: e.name,
+          title: e.title,
+          sectionId: e.sectionId,
+          activity: "wandering",
+          priceCredits: e.priceCredits,
+          color: SPAWN_COLORS[list.length % SPAWN_COLORS.length],
+          bio: e.bio || `${e.name} recently checked into the hotel.`,
+          rating: 5.0,
+          sessions: 0,
+          reviews: [],
+        },
+      ]);
+      return true;
+    }
+    try {
+      await writeAndWait("createExpert", [e.name, e.sectionId, e.title, e.bio, BigInt(e.priceCredits)]);
+      refetchExperts();
       return true;
     } catch {
       return false;
@@ -253,6 +354,7 @@ export default function Home() {
   return (
     <main className="relative h-dvh w-full overflow-hidden bg-slate-950">
       <OfficeScene
+        experts={experts}
         selectedId={selected?.id ?? null}
         paused={panelOpen}
         playerBubble={playerBubble}
@@ -325,7 +427,9 @@ export default function Home() {
           memories={memories}
           needsName={isConnected && !registered}
           onAdd={addMemory}
+          onEdit={editMemory}
           onDelete={deleteMemory}
+          onCreateExpert={createExpert}
           onClose={() => setVaultOpen(false)}
         />
       )}

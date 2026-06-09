@@ -37,12 +37,26 @@ contract Memonads {
         uint64 createdAt;
     }
 
+    /// A person submitted into one of the hotel's rooms. Spawns as an
+    /// NPC in the 3D office; sessions are paid to its owner.
+    struct ExpertInfo {
+        address owner;
+        string name;
+        string section;
+        string title;
+        string bio;
+        uint256 priceCredits;
+        uint64 createdAt;
+        bool active;
+    }
+
     mapping(address => uint256) public credits;
     mapping(address => Profile) public profiles;
     mapping(address => MemoryEntry[]) private _memories;
     mapping(address => Review[]) private _reviews;
     /// visitor => expert => number of sessions paid (gates reviews)
     mapping(address => mapping(address => uint256)) public sessionsPaid;
+    ExpertInfo[] private _experts;
 
     event Registered(address indexed user, string name);
     event MemoryAdded(address indexed user, uint256 index, string section, string title);
@@ -51,6 +65,9 @@ contract Memonads {
     event SessionPaid(address indexed visitor, address indexed expert, uint256 amountCredits);
     event CreditsWithdrawn(address indexed user, uint256 amount, uint256 refundWei);
     event ReviewPosted(address indexed expert, address indexed reviewer, uint8 rating, string text);
+    event ExpertCreated(address indexed owner, uint256 index, string name, string section);
+    event ExpertRemoved(uint256 index);
+    event MemoryEdited(address indexed user, uint256 index);
 
     error ZeroAmount();
     error NonIntegralTopUp(uint256 valueWei);
@@ -63,6 +80,8 @@ contract Memonads {
     error NoSessionPaid();
     error SelfReview();
     error WithdrawTransferFailed();
+    error InvalidExpertIndex(uint256 index);
+    error NotExpertOwner();
 
     // ---------- reception: profile + memories ----------
 
@@ -85,6 +104,22 @@ contract Memonads {
         emit MemoryAdded(msg.sender, _memories[msg.sender].length - 1, section, title);
     }
 
+    /// Edit a memory in place.
+    function editMemory(
+        uint256 index,
+        string calldata section,
+        string calldata title,
+        string calldata content
+    ) external {
+        MemoryEntry[] storage list = _memories[msg.sender];
+        if (index >= list.length) revert InvalidMemoryIndex(index);
+        if (bytes(title).length == 0 || bytes(content).length == 0) revert EmptyMemory();
+        list[index].section = section;
+        list[index].title = title;
+        list[index].content = content;
+        emit MemoryEdited(msg.sender, index);
+    }
+
     /// Removes a memory by index (swap-and-pop: the last entry takes the
     /// removed slot, so ordering is not preserved).
     function deleteMemory(uint256 index) external {
@@ -101,6 +136,41 @@ contract Memonads {
 
     function memoryCount(address user) external view returns (uint256) {
         return _memories[user].length;
+    }
+
+    // ---------- experts (submit a person into a room) ----------
+
+    /// Submit a person into a room. They spawn as an NPC in the hotel and
+    /// session payments for them go to the caller (their owner).
+    function createExpert(
+        string calldata name,
+        string calldata section,
+        string calldata title,
+        string calldata bio,
+        uint256 priceCredits
+    ) external returns (uint256 index) {
+        if (bytes(name).length == 0) revert EmptyName();
+        _experts.push(
+            ExpertInfo(msg.sender, name, section, title, bio, priceCredits, uint64(block.timestamp), true)
+        );
+        index = _experts.length - 1;
+        emit ExpertCreated(msg.sender, index, name, section);
+    }
+
+    /// Despawn one of your submitted people (soft delete).
+    function removeExpert(uint256 index) external {
+        if (index >= _experts.length) revert InvalidExpertIndex(index);
+        if (_experts[index].owner != msg.sender) revert NotExpertOwner();
+        _experts[index].active = false;
+        emit ExpertRemoved(index);
+    }
+
+    function getExperts() external view returns (ExpertInfo[] memory) {
+        return _experts;
+    }
+
+    function expertCount() external view returns (uint256) {
+        return _experts.length;
     }
 
     // ---------- credits ----------
