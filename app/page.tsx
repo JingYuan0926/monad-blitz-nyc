@@ -409,6 +409,12 @@ export default function Home() {
             {topUpPending ? "Confirming…" : isConnected ? "+ Top up 1 MON" : "+ Top up"}
           </button>
         </div>
+        <a
+          href="/docs"
+          className="rounded-xl border border-slate-700 bg-slate-900/90 px-3 py-1.5 text-xs text-slate-300 hover:text-white hover:border-violet-500 transition-colors"
+        >
+          For AI agents — x402 API →
+        </a>
       </div>
 
       {/* talk / reception prompt */}
