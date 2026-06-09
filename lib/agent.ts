@@ -8,7 +8,8 @@ import { EXPERTS, SECTIONS } from "@/app/data/experts";
 import { personaProfile } from "@/lib/personas";
 
 const rpc = createPublicClient({
-  transport: http("https://testnet-rpc.monad.xyz"),
+  // public RPC rate-limits at 15 req/s — retry transient failures
+  transport: http("https://testnet-rpc.monad.xyz", { retryCount: 3, retryDelay: 400 }),
 });
 
 function roomOf(sectionId: string) {
