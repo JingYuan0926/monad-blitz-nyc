@@ -166,8 +166,8 @@ export default function Home() {
 
       {/* top HUD */}
       <header className="pointer-events-none absolute left-4 top-4">
-        <h1 className="text-xl font-bold text-slate-900 drop-shadow-[0_1px_2px_rgba(255,255,255,0.6)]">
-          Memonads <span className="font-normal text-slate-700">· built on Monad</span>
+        <h1 className="text-4xl font-bold text-slate-900 drop-shadow-[0_1px_2px_rgba(255,255,255,0.6)]">
+          Memonads <span className="text-2xl font-normal text-slate-700">· built on Monad</span>
         </h1>
       </header>
 

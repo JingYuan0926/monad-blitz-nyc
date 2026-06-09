@@ -849,8 +849,8 @@ function Reception({ active }: { active: boolean }) {
         <ringGeometry args={[0.5, 0.65, 32]} />
         <meshBasicMaterial color={active ? "#ffffff" : "#8b5cf6"} transparent opacity={active ? 0.9 : 0.45} />
       </mesh>
-      <Label text="🛎 RECEPTION" position={[0, 2.75, 0]} height={0.62} color="#fbbf24" />
-      <Label text="check in your memories" position={[0, 2.22, 0]} height={0.3} color="#e2e8f0" />
+      <Label text="🛎 RECEPTION" position={[0, 2.95, 0]} height={0.85} color="#fbbf24" />
+      <Label text="check in your memories" position={[0, 2.28, 0]} height={0.42} color="#e2e8f0" />
     </group>
   );
 }
@@ -917,8 +917,8 @@ function Elevator() {
           <meshStandardMaterial color="#aab2bd" metalness={0.5} roughness={0.35} />
         </mesh>
       ))}
-      <Label text="🛗 ELEVATOR" position={[0.3, 2.62, 0]} height={0.34} color="#e2e8f0" />
-      <Label text="floors 2-4 coming soon" position={[0.3, 2.26, 0]} height={0.2} color="#94a3b8" />
+      <Label text="🛗 ELEVATOR" position={[0.3, 2.78, 0]} height={0.5} color="#e2e8f0" />
+      <Label text="floors 2-4 coming soon" position={[0.3, 2.3, 0]} height={0.3} color="#94a3b8" />
     </group>
   );
 }
@@ -1561,7 +1561,7 @@ function Grounds() {
   return (
     <group>
       {/* grass (big soft checker like a mowed lawn) */}
-      <TileFloor position={[0, -0.01, 0]} size={[64, 48]} color="#74bd58" tile={2} />
+      <TileFloor position={[0, -0.01, 0]} size={[200, 160]} color="#74bd58" tile={2} />
       {/* path from the front door */}
       <TileFloor position={[0, 0, 13.5]} size={[3, 7]} color="#b9b3a4" />
       {/* parking lot */}
@@ -1630,7 +1630,7 @@ export default function OfficeScene({
       camera={{ zoom: 50, position: [16, 11.5, 29], near: 0.1, far: 300 }}
       onPointerMissed={() => onSelectExpert(null)}
     >
-      <color attach="background" args={["#f3f0e7"]} />
+      <color attach="background" args={["#74bd58"]} />
 
       {/* flat sprite-style lighting: strong ambient + one directional so each
           box face gets its own uniform tone (no shadows, no gradients) */}
