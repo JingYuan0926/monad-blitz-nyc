@@ -31,11 +31,13 @@ export default function ExpertPanel({
 }: {
   expert: Expert;
   balance: number;
-  onPay: (amount: number) => boolean;
+  onPay: (amount: number) => Promise<boolean>;
   onClose: () => void;
 }) {
   const [stage, setStage] = useState<"profile" | "paying" | "chat">("profile");
+  const [payError, setPayError] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [thinking, setThinking] = useState(false);
   const [input, setInput] = useState("");
   const [reviews, setReviews] = useState<Review[]>(expert.reviews);
   const [myRating, setMyRating] = useState(5);
@@ -43,36 +45,61 @@ export default function ExpertPanel({
 
   const section = SECTIONS.find((s) => s.id === expert.sectionId);
 
-  const handlePay = () => {
-    if (!onPay(expert.pricePerSession)) return;
+  const handlePay = async () => {
+    setPayError(false);
     setStage("paying");
-    // UI-only: simulate the on-chain confirmation
-    setTimeout(() => {
-      setStage("chat");
-      setMessages([
-        {
-          role: "expert",
-          text: `Hey, I'm ${expert.name}. You've unlocked a session with my memory vault — ask me anything about ${section?.name.toLowerCase()}.`,
-        },
-      ]);
-    }, 1200);
+    const ok = await onPay(expert.pricePerSession);
+    if (!ok) {
+      setPayError(true);
+      setStage("profile");
+      return;
+    }
+    setStage("chat");
+    setMessages([
+      {
+        role: "expert",
+        text: `Hey, I'm ${expert.name}. You've unlocked a session with my memory vault — ask me anything about ${section?.name.toLowerCase()}.`,
+      },
+    ]);
   };
 
-  const sendMessage = () => {
+  const sendMessage = async () => {
     const text = input.trim();
-    if (!text) return;
+    if (!text || thinking) return;
     setInput("");
+    const history = messages;
     setMessages((m) => [...m, { role: "user", text }]);
-    // UI-only placeholder reply
-    setTimeout(() => {
+    setThinking(true);
+    try {
+      const persona = `You are ${expert.name}, ${expert.title}, an expert in ${section?.name.toLowerCase()} inside Memonads — a hotel of memory vaults where visitors pay to query an expert's experience. Bio: ${expert.bio} Answer in first person as this expert, drawing on your experience. Be practical and concise (2-4 sentences).`;
+      const res = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          messages: [
+            { role: "system", content: persona },
+            ...history.map((m) => ({
+              role: m.role === "user" ? "user" : "assistant",
+              content: m.text,
+            })),
+            { role: "user", content: text },
+          ],
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || typeof data.reply !== "string") throw new Error(data.error);
+      setMessages((m) => [...m, { role: "expert", text: data.reply }]);
+    } catch {
       setMessages((m) => [
         ...m,
         {
           role: "expert",
-          text: `(demo) Great question — in my experience, "${text.slice(0, 60)}" comes down to fundamentals. Once the vault is wired up, this answer will come from my real memories.`,
+          text: `(offline) Great question — in my experience, "${text.slice(0, 60)}" comes down to fundamentals. Set OPENAI_API_KEY in .env.local to get my real answers.`,
         },
       ]);
-    }, 700);
+    } finally {
+      setThinking(false);
+    }
   };
 
   const submitReview = () => {
@@ -124,6 +151,11 @@ export default function ExpertPanel({
             {balance < expert.pricePerSession && (
               <p className="text-xs text-red-400 text-center">Not enough MON — top up your balance.</p>
             )}
+            {payError && (
+              <p className="text-xs text-red-400 text-center">
+                Payment didn&apos;t go through — check your credits and try again.
+              </p>
+            )}
 
             <div>
               <h3 className="text-sm font-semibold text-slate-400 mb-2">
@@ -168,6 +200,11 @@ export default function ExpertPanel({
                   {m.text}
                 </div>
               ))}
+              {thinking && (
+                <div className="max-w-[85%] rounded-xl bg-slate-800 px-3 py-2 text-sm text-slate-400">
+                  thinking…
+                </div>
+              )}
             </div>
 
             <div className="rounded-lg bg-slate-800 p-3 space-y-2">

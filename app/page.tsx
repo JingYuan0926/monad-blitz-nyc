@@ -2,6 +2,11 @@
 
 import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
+import { ConnectButton } from "@rainbow-me/rainbowkit";
+import { parseEther } from "viem";
+import { useAccount, usePublicClient, useReadContract, useWriteContract } from "wagmi";
+import { monadTestnet } from "wagmi/chains";
+import { AI_QUERY_CREDITS_ADDRESS, aiQueryCreditsAbi } from "@/lib/aiQueryCredits";
 import ExpertPanel from "./components/ExpertPanel";
 import MemoryPanel, { type MemoryEntry } from "./components/MemoryPanel";
 import type { NearTarget } from "./components/OfficeScene";
@@ -16,11 +21,15 @@ const OfficeScene = dynamic(() => import("./components/OfficeScene"), {
   ),
 });
 
+const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000" as const;
+const CREDITS_PER_MON = 10_000;
+
 export default function Home() {
   const [selected, setSelected] = useState<Expert | null>(null);
   const [near, setNear] = useState<NearTarget | null>(null);
   const [vaultOpen, setVaultOpen] = useState(false);
-  const [balance, setBalance] = useState(5);
+  const [mockBalance, setMockBalance] = useState(5);
+  const [topUpPending, setTopUpPending] = useState(false);
   const [memories, setMemories] = useState<MemoryEntry[]>([
     {
       id: 1,
@@ -42,15 +51,75 @@ export default function Home() {
     },
   ]);
 
-  const pay = (amount: number) => {
-    if (balance < amount) return false;
-    setBalance((b) => +(b - amount).toFixed(2));
+  // --- on-chain credits (AIQueryCredits on Monad Testnet) ---
+  const { address, isConnected } = useAccount();
+  const publicClient = usePublicClient({ chainId: monadTestnet.id });
+  const { writeContractAsync } = useWriteContract();
+  const { data: credits, refetch: refetchCredits } = useReadContract({
+    address: AI_QUERY_CREDITS_ADDRESS,
+    abi: aiQueryCreditsAbi,
+    functionName: "credits",
+    args: [address ?? ZERO_ADDRESS],
+    chainId: monadTestnet.id,
+    query: { enabled: Boolean(address), refetchInterval: 4_000 },
+  });
+
+  const balance = isConnected
+    ? Number(credits ?? BigInt(0)) / CREDITS_PER_MON
+    : mockBalance;
+
+  const pay = async (amountMon: number): Promise<boolean> => {
+    if (isConnected) {
+      const needed = BigInt(Math.round(amountMon * CREDITS_PER_MON));
+      if ((credits ?? BigInt(0)) < needed) return false;
+      try {
+        const hash = await writeContractAsync({
+          abi: aiQueryCreditsAbi,
+          address: AI_QUERY_CREDITS_ADDRESS,
+          chainId: monadTestnet.id,
+          functionName: "consume",
+          args: [needed],
+        });
+        await publicClient?.waitForTransactionReceipt({ hash });
+        refetchCredits();
+        return true;
+      } catch {
+        return false;
+      }
+    }
+    // demo mode (no wallet): simulated confirmation
+    if (mockBalance < amountMon) return false;
+    await new Promise((r) => setTimeout(r, 1200));
+    setMockBalance((b) => +(b - amountMon).toFixed(2));
     return true;
+  };
+
+  const topUp = async () => {
+    if (!isConnected) {
+      setMockBalance((b) => +(b + 1).toFixed(2));
+      return;
+    }
+    setTopUpPending(true);
+    try {
+      const hash = await writeContractAsync({
+        abi: aiQueryCreditsAbi,
+        address: AI_QUERY_CREDITS_ADDRESS,
+        chainId: monadTestnet.id,
+        functionName: "topUp",
+        value: parseEther("1"),
+      });
+      await publicClient?.waitForTransactionReceipt({ hash });
+      refetchCredits();
+    } catch {
+      // user rejected or tx failed — badge simply keeps the old balance
+    } finally {
+      setTopUpPending(false);
+    }
   };
 
   const panelOpen = !!selected || vaultOpen;
 
-  // press E near an expert or the vault to interact
+  // press E near an expert or the reception desk to interact
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
@@ -85,17 +154,30 @@ export default function Home() {
           Memonads <span className="font-normal text-slate-700">· built on Monad</span>
         </h1>
         <div className="pointer-events-auto flex w-fit items-center gap-2 rounded-xl border border-slate-700 bg-slate-900/90 px-3 py-2 text-sm text-slate-100">
-          <span className="text-violet-400 font-semibold">◆ {balance.toFixed(2)} MON</span>
+          <span className="text-violet-400 font-semibold">
+            ◆ {balance.toFixed(2)} MON
+            {isConnected && credits !== undefined && (
+              <span className="ml-1 font-normal text-slate-400">
+                · {credits.toLocaleString()} credits
+              </span>
+            )}
+          </span>
           <button
-            onClick={() => setBalance((b) => +(b + 1).toFixed(2))}
-            className="rounded-md bg-violet-600 hover:bg-violet-500 px-2 py-0.5 text-xs font-semibold cursor-pointer"
+            onClick={topUp}
+            disabled={topUpPending}
+            className="rounded-md bg-violet-600 hover:bg-violet-500 disabled:opacity-50 px-2 py-0.5 text-xs font-semibold cursor-pointer"
           >
-            + Top up
+            {topUpPending ? "Confirming…" : isConnected ? "+ Top up 1 MON" : "+ Top up"}
           </button>
         </div>
       </header>
 
-      {/* talk / vault prompt */}
+      {/* wallet */}
+      <div className="pointer-events-auto absolute right-4 top-4">
+        <ConnectButton showBalance={false} chainStatus="icon" accountStatus="address" />
+      </div>
+
+      {/* talk / reception prompt */}
       {near && !panelOpen && (
         <div className="pointer-events-none absolute bottom-20 left-1/2 -translate-x-1/2 rounded-xl border border-slate-700 bg-slate-900/90 px-4 py-2 text-sm text-slate-100 shadow-lg">
           Press <kbd className="rounded bg-violet-600 px-1.5 py-0.5 font-bold">E</kbd>{" "}
