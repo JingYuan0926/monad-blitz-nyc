@@ -34,6 +34,11 @@ function validSection(section: string) {
   return SECTIONS.some((s) => s.id === section) ? section : SECTIONS[0].id;
 }
 
+// spawned people have ids like "chain-3" — 3 is their on-chain index
+function chainIndexOf(id: string): number | null {
+  return id.startsWith("chain-") ? Number(id.slice(6)) : null;
+}
+
 export default function Home() {
   const [selected, setSelected] = useState<Expert | null>(null);
   const [near, setNear] = useState<NearTarget | null>(null);
@@ -43,28 +48,11 @@ export default function Home() {
   const [mockCredits, setMockCredits] = useState(50_000);
   const [topUpPending, setTopUpPending] = useState(false);
   const [localExperts, setLocalExperts] = useState<Expert[]>([]);
-  const [localMemories, setLocalMemories] = useState<MemoryEntry[]>([
-    {
-      id: 1,
-      sectionId: "coding",
-      title: "Demo first, slides second",
-      text: "Judges remember what they saw working, not what you said. Build the demo path before anything else.",
-    },
-    {
-      id: 2,
-      sectionId: "science",
-      title: "Listen for the first two minutes",
-      text: "Patients usually tell you the diagnosis themselves if you don't interrupt them early.",
-    },
-    {
-      id: 3,
-      sectionId: "sport",
-      title: "Sleep is part of training",
-      text: "Most plateaus I've coached through came from recovery debt, not lack of effort.",
-    },
-  ]);
+  // demo mode: each spawned person's memories, keyed by person id
+  const [localPersonMemories, setLocalPersonMemories] = useState<Record<string, MemoryEntry[]>>({});
+  const [vaultPersonId, setVaultPersonId] = useState<string | null>(null);
 
-  // --- Memonads contract (Monad Testnet): credits, profile, memories, reviews ---
+  // --- Memonads contract (Monad Testnet) ---
   const { address, isConnected } = useAccount();
   const publicClient = usePublicClient({ chainId: monadTestnet.id });
   const { writeContractAsync } = useWriteContract();
@@ -76,25 +64,6 @@ export default function Home() {
     args: [address ?? ZERO_ADDRESS],
     chainId: monadTestnet.id,
     query: { enabled: Boolean(address), refetchInterval: 4_000 },
-  });
-
-  const { data: profile, refetch: refetchProfile } = useReadContract({
-    address: MEMONADS_ADDRESS,
-    abi: memonadsAbi,
-    functionName: "profiles",
-    args: [address ?? ZERO_ADDRESS],
-    chainId: monadTestnet.id,
-    query: { enabled: Boolean(address) },
-  });
-  const registered = Boolean(profile?.[2]);
-
-  const { data: chainMemories, refetch: refetchMemories } = useReadContract({
-    address: MEMONADS_ADDRESS,
-    abi: memonadsAbi,
-    functionName: "getMemories",
-    args: [address ?? ZERO_ADDRESS],
-    chainId: monadTestnet.id,
-    query: { enabled: Boolean(address) },
   });
 
   const { data: chainExpertList, refetch: refetchExperts } = useReadContract({
@@ -135,6 +104,57 @@ export default function Home() {
     };
   }, [chainExpertList, isConnected, localExperts]);
 
+  // people YOU submitted (whose vaults you can curate at reception)
+  const myPeople = useMemo(
+    () =>
+      experts.filter((e) =>
+        isConnected
+          ? expertOwners[e.id]?.toLowerCase() === address?.toLowerCase()
+          : e.id.startsWith("local-")
+      ),
+    [experts, expertOwners, isConnected, address]
+  );
+
+  // keep a valid person selected in the vault panel
+  useEffect(() => {
+    if (!vaultPersonId || !myPeople.some((p) => p.id === vaultPersonId)) {
+      setVaultPersonId(myPeople[0]?.id ?? null);
+    }
+  }, [myPeople, vaultPersonId]);
+
+  // memories of the person being curated at reception
+  const vaultPersonChainIndex = vaultPersonId ? chainIndexOf(vaultPersonId) : null;
+  const { data: vaultChainMemories, refetch: refetchVaultMemories } = useReadContract({
+    address: MEMONADS_ADDRESS,
+    abi: memonadsAbi,
+    functionName: "getExpertMemories",
+    args: [BigInt(vaultPersonChainIndex ?? 0)],
+    chainId: monadTestnet.id,
+    query: { enabled: isConnected && vaultPersonChainIndex !== null },
+  });
+
+  const vaultMemories: MemoryEntry[] =
+    isConnected && vaultPersonChainIndex !== null
+      ? (vaultChainMemories ?? []).map((m, i) => ({ id: i, title: m.title, text: m.content }))
+      : (vaultPersonId && localPersonMemories[vaultPersonId]) || [];
+
+  // memories of the expert you're chatting with — they feed the AI persona
+  const selectedChainIndex = selected ? chainIndexOf(selected.id) : null;
+  const { data: selectedChainMemories } = useReadContract({
+    address: MEMONADS_ADDRESS,
+    abi: memonadsAbi,
+    functionName: "getExpertMemories",
+    args: [BigInt(selectedChainIndex ?? 0)],
+    chainId: monadTestnet.id,
+    query: { enabled: isConnected && selectedChainIndex !== null },
+  });
+
+  const selectedVault: string[] = selected
+    ? selectedChainIndex !== null
+      ? (selectedChainMemories ?? []).map((m) => `${m.title}: ${m.content}`)
+      : (localPersonMemories[selected.id] ?? []).map((m) => `${m.title}: ${m.text}`)
+    : [];
+
   // payments/reviews target the owner wallet for spawned people,
   // a stable pseudo-address for built-in residents
   const payAddressOf = (e: Expert): `0x${string}` =>
@@ -154,10 +174,9 @@ export default function Home() {
 
   const writeAndWait = async (
     functionName:
-      | "register"
-      | "addMemory"
-      | "editMemory"
-      | "deleteMemory"
+      | "addExpertMemory"
+      | "editExpertMemory"
+      | "deleteExpertMemory"
       | "topUp"
       | "paySession"
       | "review"
@@ -224,70 +243,28 @@ export default function Home() {
     }
   };
 
-  // --- memory vault (reception) ---
-  const memories: MemoryEntry[] = isConnected
-    ? (chainMemories ?? []).map((m, i) => ({
-        id: i,
-        sectionId: m.section,
-        title: m.title,
-        text: m.content,
-      }))
-    : localMemories;
-
-  const addMemory = async (
-    m: Omit<MemoryEntry, "id">,
-    name?: string
-  ): Promise<boolean> => {
-    if (!isConnected) {
-      setLocalMemories((list) => [{ ...m, id: Date.now() }, ...list]);
-      return true;
-    }
-    try {
-      if (!registered) {
-        if (!name?.trim()) return false;
-        await writeAndWait("register", [name.trim()]);
-        refetchProfile();
-      }
-      await writeAndWait("addMemory", [m.sectionId, m.title, m.text]);
-      refetchMemories();
-      return true;
-    } catch {
-      return false;
-    }
-  };
-
-  const editMemory = async (m: MemoryEntry): Promise<boolean> => {
-    if (!isConnected) {
-      setLocalMemories((list) => list.map((x) => (x.id === m.id ? m : x)));
-      return true;
-    }
-    try {
-      await writeAndWait("editMemory", [BigInt(m.id), m.sectionId, m.title, m.text]);
-      refetchMemories();
-      return true;
-    } catch {
-      return false;
-    }
-  };
+  // --- reception: spawn people and curate their memories ---
 
   const createExpert = async (e: NewExpert): Promise<boolean> => {
     if (!isConnected) {
+      const id = `local-${Date.now()}`;
       setLocalExperts((list) => [
         ...list,
         {
-          id: `local-${Date.now()}`,
+          id,
           name: e.name,
           title: e.title,
           sectionId: e.sectionId,
           activity: "wandering",
           priceCredits: e.priceCredits,
-          color: SPAWN_COLORS[list.length % SPAWN_COLORS.length],
+          color: SPAWN_COLORS[localExperts.length % SPAWN_COLORS.length],
           bio: e.bio || `${e.name} recently checked into the hotel.`,
           rating: 5.0,
           sessions: 0,
           reviews: [],
         },
       ]);
+      setVaultPersonId(id);
       return true;
     }
     try {
@@ -299,14 +276,57 @@ export default function Home() {
     }
   };
 
-  const deleteMemory = async (id: number) => {
+  const addMemory = async (m: Omit<MemoryEntry, "id">): Promise<boolean> => {
+    if (!vaultPersonId) return false;
     if (!isConnected) {
-      setLocalMemories((list) => list.filter((m) => m.id !== id));
+      setLocalPersonMemories((all) => ({
+        ...all,
+        [vaultPersonId]: [{ ...m, id: Date.now() }, ...(all[vaultPersonId] ?? [])],
+      }));
+      return true;
+    }
+    if (vaultPersonChainIndex === null) return false;
+    try {
+      await writeAndWait("addExpertMemory", [BigInt(vaultPersonChainIndex), m.title, m.text]);
+      refetchVaultMemories();
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
+  const editMemory = async (m: MemoryEntry): Promise<boolean> => {
+    if (!vaultPersonId) return false;
+    if (!isConnected) {
+      setLocalPersonMemories((all) => ({
+        ...all,
+        [vaultPersonId]: (all[vaultPersonId] ?? []).map((x) => (x.id === m.id ? m : x)),
+      }));
+      return true;
+    }
+    if (vaultPersonChainIndex === null) return false;
+    try {
+      await writeAndWait("editExpertMemory", [BigInt(vaultPersonChainIndex), BigInt(m.id), m.title, m.text]);
+      refetchVaultMemories();
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
+  const deleteMemory = async (id: number) => {
+    if (!vaultPersonId) return;
+    if (!isConnected) {
+      setLocalPersonMemories((all) => ({
+        ...all,
+        [vaultPersonId]: (all[vaultPersonId] ?? []).filter((m) => m.id !== id),
+      }));
       return;
     }
+    if (vaultPersonChainIndex === null) return;
     try {
-      await writeAndWait("deleteMemory", [BigInt(id)]);
-      refetchMemories();
+      await writeAndWait("deleteExpertMemory", [BigInt(vaultPersonChainIndex), BigInt(id)]);
+      refetchVaultMemories();
     } catch {
       // tx rejected — list stays as-is
     }
@@ -401,7 +421,7 @@ export default function Home() {
             </>
           ) : (
             <>
-              to <span className="font-semibold">check in your memories</span> at reception
+              to visit <span className="font-semibold">reception</span>
             </>
           )}
         </div>
@@ -413,6 +433,7 @@ export default function Home() {
           expert={selected}
           balance={balanceCredits}
           extraReviews={onChainReviews}
+          vaultMemories={selectedVault}
           onPay={pay}
           onReview={postReview}
           onBubble={(role, text) => {
@@ -424,8 +445,10 @@ export default function Home() {
       )}
       {vaultOpen && !selected && (
         <MemoryPanel
-          memories={memories}
-          needsName={isConnected && !registered}
+          people={myPeople}
+          selectedPersonId={vaultPersonId}
+          onSelectPerson={setVaultPersonId}
+          memories={vaultMemories}
           onAdd={addMemory}
           onEdit={editMemory}
           onDelete={deleteMemory}

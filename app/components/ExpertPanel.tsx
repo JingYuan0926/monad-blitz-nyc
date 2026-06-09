@@ -27,6 +27,7 @@ export default function ExpertPanel({
   expert,
   balance,
   extraReviews,
+  vaultMemories,
   onPay,
   onReview,
   onBubble,
@@ -36,6 +37,8 @@ export default function ExpertPanel({
   balance: number;
   /** reviews recorded on-chain for this expert */
   extraReviews: Review[];
+  /** the memories checked into this person — the AI answers from these */
+  vaultMemories: string[];
   onPay: (amount: number) => Promise<boolean>;
   onReview: (rating: number, text: string) => Promise<"chain" | "local" | false>;
   onBubble: (role: "user" | "expert", text: string) => void;
@@ -81,7 +84,12 @@ export default function ExpertPanel({
     onBubble("user", text);
     setThinking(true);
     try {
-      const persona = `You are ${expert.name}, ${expert.title}, an expert in ${section?.name.toLowerCase()} inside Memonads — a hotel of memory vaults where visitors pay to query an expert's experience. Bio: ${expert.bio} Answer in first person as this expert, drawing on your experience. Be practical and concise (2-4 sentences).`;
+      const memoryBlock = vaultMemories.length
+        ? ` Your memory vault contains these checked-in memories — treat them as your own lived experience and ground your answers in them: ${vaultMemories
+            .map((m, i) => `(${i + 1}) ${m}`)
+            .join(" ")}`
+        : "";
+      const persona = `You are ${expert.name}, ${expert.title}, an expert in ${section?.name.toLowerCase()} inside Memonads — a hotel of memory vaults where visitors pay to query an expert's experience. Bio: ${expert.bio}${memoryBlock} Answer in first person as this expert, drawing on your experience. Be practical and concise (2-4 sentences).`;
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },

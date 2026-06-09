@@ -1,11 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { SECTIONS } from "../data/experts";
+import { SECTIONS, type Expert } from "../data/experts";
 
 export type MemoryEntry = {
   id: number;
-  sectionId: string;
   title: string;
   text: string;
 };
@@ -19,25 +18,27 @@ export type NewExpert = {
 };
 
 export default function MemoryPanel({
+  people,
+  selectedPersonId,
+  onSelectPerson,
   memories,
-  needsName,
   onAdd,
   onEdit,
   onDelete,
   onCreateExpert,
   onClose,
 }: {
+  /** the people you submitted — memories live inside them */
+  people: Expert[];
+  selectedPersonId: string | null;
+  onSelectPerson: (id: string) => void;
   memories: MemoryEntry[];
-  /** wallet connected but no profile registered yet — ask for a name */
-  needsName: boolean;
-  onAdd: (m: Omit<MemoryEntry, "id">, name?: string) => Promise<boolean>;
+  onAdd: (m: Omit<MemoryEntry, "id">) => Promise<boolean>;
   onEdit: (m: MemoryEntry) => Promise<boolean>;
   onDelete: (id: number) => void | Promise<void>;
   onCreateExpert: (e: NewExpert) => Promise<boolean>;
   onClose: () => void;
 }) {
-  const [sectionId, setSectionId] = useState(SECTIONS[0].id);
-  const [name, setName] = useState("");
   const [title, setTitle] = useState("");
   const [text, setText] = useState("");
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -54,8 +55,8 @@ export default function MemoryPanel({
   const [spawned, setSpawned] = useState(false);
   const [spawnFailed, setSpawnFailed] = useState(false);
 
-  const canSave =
-    title.trim() && text.trim() && !saving && (!needsName || editingId !== null || name.trim());
+  const person = people.find((p) => p.id === selectedPersonId) ?? null;
+  const canSave = person && title.trim() && text.trim() && !saving;
 
   const save = async () => {
     if (!canSave) return;
@@ -63,11 +64,8 @@ export default function MemoryPanel({
     setFailed(false);
     const ok =
       editingId !== null
-        ? await onEdit({ id: editingId, sectionId, title: title.trim(), text: text.trim() })
-        : await onAdd(
-            { sectionId, title: title.trim(), text: text.trim() },
-            needsName ? name.trim() : undefined
-          );
+        ? await onEdit({ id: editingId, title: title.trim(), text: text.trim() })
+        : await onAdd({ title: title.trim(), text: text.trim() });
     setSaving(false);
     if (!ok) {
       setFailed(true);
@@ -82,7 +80,6 @@ export default function MemoryPanel({
 
   const startEdit = (m: MemoryEntry) => {
     setEditingId(m.id);
-    setSectionId(m.sectionId);
     setTitle(m.title);
     setText(m.text);
   };
@@ -116,8 +113,6 @@ export default function MemoryPanel({
     setTimeout(() => setSpawned(false), 2500);
   };
 
-  const sectionOf = (id: string) => SECTIONS.find((s) => s.id === id);
-
   return (
     <aside className="absolute right-4 top-4 bottom-4 w-[380px] max-w-[calc(100vw-2rem)] flex flex-col rounded-2xl border border-violet-700 bg-slate-900/95 text-slate-100 shadow-2xl backdrop-blur">
       {/* header */}
@@ -126,9 +121,9 @@ export default function MemoryPanel({
           R
         </div>
         <div className="min-w-0 flex-1">
-          <h2 className="font-bold text-lg leading-tight">Reception — Memory Vault</h2>
+          <h2 className="font-bold text-lg leading-tight">Reception</h2>
           <p className="text-sm text-slate-400">
-            Check in your knowledge, queryable by everyone
+            Submit people — their memories live inside them
           </p>
         </div>
         <button
@@ -141,72 +136,6 @@ export default function MemoryPanel({
       </div>
 
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {/* memory form */}
-        <div className="rounded-xl bg-slate-800 p-3 space-y-2">
-          <p className="text-xs font-semibold text-slate-400">
-            {editingId !== null ? "Edit memory" : "Check in a memory"}
-          </p>
-          {needsName && editingId === null && (
-            <input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Your name — registered on-chain on first check-in"
-              className="font-body w-full rounded-md bg-slate-900 border border-violet-600 px-2 py-1.5 text-sm outline-none focus:border-violet-400"
-            />
-          )}
-          <select
-            value={sectionId}
-            onChange={(e) => setSectionId(e.target.value)}
-            className="w-full rounded-md bg-slate-900 border border-slate-700 px-2 py-1.5 text-sm outline-none focus:border-violet-500 cursor-pointer"
-          >
-            {SECTIONS.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.name}
-              </option>
-            ))}
-          </select>
-          <input
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            placeholder="Title — e.g. How I pick hackathon ideas"
-            className="font-body w-full rounded-md bg-slate-900 border border-slate-700 px-2 py-1.5 text-sm outline-none focus:border-violet-500"
-          />
-          <textarea
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            placeholder="The memory itself — what happened, what you learned, what you'd do differently…"
-            rows={4}
-            className="font-body w-full resize-none rounded-md bg-slate-900 border border-slate-700 px-2 py-1.5 text-sm outline-none focus:border-violet-500"
-          />
-          <div className="flex gap-2">
-            <button
-              onClick={save}
-              disabled={!canSave}
-              className="flex-1 rounded-lg bg-violet-600 hover:bg-violet-500 disabled:opacity-40 disabled:cursor-not-allowed py-2 text-sm font-semibold transition-colors cursor-pointer"
-            >
-              {saving
-                ? "Saving to vault…"
-                : editingId !== null
-                  ? "Update memory"
-                  : "Save memory"}
-            </button>
-            {editingId !== null && (
-              <button
-                onClick={cancelEdit}
-                className="rounded-lg bg-slate-700 hover:bg-slate-600 px-3 text-sm cursor-pointer"
-              >
-                Cancel
-              </button>
-            )}
-          </div>
-          {saved && <p className="text-xs text-emerald-400 text-center">Saved ✓</p>}
-          {failed && (
-            <p className="text-xs text-red-400 text-center">
-              Couldn&apos;t save — transaction rejected or failed. Try again.
-            </p>
-          )}
-        </div>
-
         {/* submit a person */}
         <div className="rounded-xl border border-slate-700 bg-slate-800/60 p-3 space-y-2">
           <p className="text-xs font-semibold text-slate-400">
@@ -256,7 +185,7 @@ export default function MemoryPanel({
           </button>
           {spawned && (
             <p className="text-xs text-emerald-400 text-center">
-              Spawned ✓ — look for them in their room
+              Spawned — look for them in their room
             </p>
           )}
           {spawnFailed && (
@@ -266,44 +195,113 @@ export default function MemoryPanel({
           )}
         </div>
 
-        {/* entries */}
-        <div>
-          <h3 className="text-sm font-semibold text-slate-400 mb-2">
-            Your memories ({memories.length})
-          </h3>
-          {memories.length === 0 ? (
-            <p className="text-sm text-slate-500">Nothing here yet — add your first memory above.</p>
+        {/* memories of one of your people */}
+        <div className="rounded-xl bg-slate-800 p-3 space-y-2">
+          <p className="text-xs font-semibold text-slate-400">
+            {editingId !== null ? "Edit memory" : "Add a memory to your person"}
+          </p>
+          {people.length === 0 ? (
+            <p className="font-body text-sm text-slate-500">
+              You haven&apos;t submitted anyone yet — spawn a person above first. Their
+              memories will live inside them.
+            </p>
           ) : (
-            <ul className="space-y-2">
-              {memories.map((m) => (
-                <li key={m.id} className="rounded-lg bg-slate-800 p-3 text-sm">
-                  <p className="flex items-center justify-between gap-2">
-                    <span className="font-medium text-slate-200 truncate">
-                      [{sectionOf(m.sectionId)?.name ?? m.sectionId}] {m.title}
-                    </span>
-                    <span className="flex shrink-0 gap-2">
-                      <button
-                        onClick={() => startEdit(m)}
-                        className="text-slate-500 hover:text-violet-300 cursor-pointer"
-                        aria-label="Edit memory"
-                      >
-                        Edit
-                      </button>
-                      <button
-                        onClick={() => onDelete(m.id)}
-                        className="text-slate-500 hover:text-red-400 cursor-pointer"
-                        aria-label="Delete memory"
-                      >
-                        ✕
-                      </button>
-                    </span>
-                  </p>
-                  <p className="font-body text-slate-400 mt-1">{m.text}</p>
-                </li>
-              ))}
-            </ul>
+            <>
+              <select
+                value={selectedPersonId ?? ""}
+                onChange={(e) => onSelectPerson(e.target.value)}
+                className="w-full rounded-md bg-slate-900 border border-violet-600 px-2 py-1.5 text-sm outline-none focus:border-violet-400 cursor-pointer"
+              >
+                {people.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name} — {SECTIONS.find((s) => s.id === p.sectionId)?.name}
+                  </option>
+                ))}
+              </select>
+              <input
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="Title — e.g. How I pick hackathon ideas"
+                className="font-body w-full rounded-md bg-slate-900 border border-slate-700 px-2 py-1.5 text-sm outline-none focus:border-violet-500"
+              />
+              <textarea
+                value={text}
+                onChange={(e) => setText(e.target.value)}
+                placeholder="The memory itself — what happened, what they learned, what they'd do differently…"
+                rows={4}
+                className="font-body w-full resize-none rounded-md bg-slate-900 border border-slate-700 px-2 py-1.5 text-sm outline-none focus:border-violet-500"
+              />
+              <div className="flex gap-2">
+                <button
+                  onClick={save}
+                  disabled={!canSave}
+                  className="flex-1 rounded-lg bg-violet-600 hover:bg-violet-500 disabled:opacity-40 disabled:cursor-not-allowed py-2 text-sm font-semibold transition-colors cursor-pointer"
+                >
+                  {saving
+                    ? "Saving…"
+                    : editingId !== null
+                      ? "Update memory"
+                      : `Save into ${person?.name.split(" ")[0] ?? "vault"}`}
+                </button>
+                {editingId !== null && (
+                  <button
+                    onClick={cancelEdit}
+                    className="rounded-lg bg-slate-700 hover:bg-slate-600 px-3 text-sm cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                )}
+              </div>
+              {saved && <p className="text-xs text-emerald-400 text-center">Saved ✓</p>}
+              {failed && (
+                <p className="text-xs text-red-400 text-center">
+                  Couldn&apos;t save — transaction rejected or failed. Try again.
+                </p>
+              )}
+            </>
           )}
         </div>
+
+        {/* entries */}
+        {person && (
+          <div>
+            <h3 className="text-sm font-semibold text-slate-400 mb-2">
+              {person.name}&apos;s memories ({memories.length})
+            </h3>
+            {memories.length === 0 ? (
+              <p className="text-sm text-slate-500">
+                Nothing here yet — their mind is empty until you add memories.
+              </p>
+            ) : (
+              <ul className="space-y-2">
+                {memories.map((m) => (
+                  <li key={m.id} className="rounded-lg bg-slate-800 p-3 text-sm">
+                    <p className="flex items-center justify-between gap-2">
+                      <span className="font-medium text-slate-200 truncate">{m.title}</span>
+                      <span className="flex shrink-0 gap-2">
+                        <button
+                          onClick={() => startEdit(m)}
+                          className="text-slate-500 hover:text-violet-300 cursor-pointer"
+                          aria-label="Edit memory"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => onDelete(m.id)}
+                          className="text-slate-500 hover:text-red-400 cursor-pointer"
+                          aria-label="Delete memory"
+                        >
+                          ✕
+                        </button>
+                      </span>
+                    </p>
+                    <p className="font-body text-slate-400 mt-1">{m.text}</p>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
       </div>
     </aside>
   );

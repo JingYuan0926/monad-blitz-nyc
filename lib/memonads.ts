@@ -7,7 +7,7 @@
 import { keccak256, toHex } from "viem";
 
 export const MEMONADS_ADDRESS =
-  "0x11dB261361D781B312606Dc477429Bc6C3411Cb5" as const;
+  "0xee56569f648c26C8216877E5C47FA2578334D81B" as const;
 
 /** Price of one credit in wei. topUp() reverts unless msg.value is a positive multiple. */
 export const WEI_PER_CREDIT = BigInt("100000000000000"); // 1e14
@@ -207,6 +207,69 @@ export const memonadsAbi = [
     "anonymous": false,
     "inputs": [
       {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "expertIndex",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "index",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "string",
+        "name": "title",
+        "type": "string"
+      }
+    ],
+    "name": "ExpertMemoryAdded",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "expertIndex",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "index",
+        "type": "uint256"
+      }
+    ],
+    "name": "ExpertMemoryDeleted",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "expertIndex",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "index",
+        "type": "uint256"
+      }
+    ],
+    "name": "ExpertMemoryEdited",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
         "indexed": false,
         "internalType": "uint256",
         "name": "index",
@@ -376,6 +439,29 @@ export const memonadsAbi = [
   {
     "inputs": [
       {
+        "internalType": "uint256",
+        "name": "expertIndex",
+        "type": "uint256"
+      },
+      {
+        "internalType": "string",
+        "name": "title",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "content",
+        "type": "string"
+      }
+    ],
+    "name": "addExpertMemory",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
         "internalType": "string",
         "name": "section",
         "type": "string"
@@ -458,11 +544,57 @@ export const memonadsAbi = [
     "inputs": [
       {
         "internalType": "uint256",
+        "name": "expertIndex",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "index",
+        "type": "uint256"
+      }
+    ],
+    "name": "deleteExpertMemory",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
         "name": "index",
         "type": "uint256"
       }
     ],
     "name": "deleteMemory",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "expertIndex",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "index",
+        "type": "uint256"
+      },
+      {
+        "internalType": "string",
+        "name": "title",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "content",
+        "type": "string"
+      }
+    ],
+    "name": "editExpertMemory",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
@@ -503,6 +635,47 @@ export const memonadsAbi = [
         "internalType": "uint256",
         "name": "",
         "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "expertIndex",
+        "type": "uint256"
+      }
+    ],
+    "name": "getExpertMemories",
+    "outputs": [
+      {
+        "components": [
+          {
+            "internalType": "string",
+            "name": "section",
+            "type": "string"
+          },
+          {
+            "internalType": "string",
+            "name": "title",
+            "type": "string"
+          },
+          {
+            "internalType": "string",
+            "name": "content",
+            "type": "string"
+          },
+          {
+            "internalType": "uint64",
+            "name": "createdAt",
+            "type": "uint64"
+          }
+        ],
+        "internalType": "struct Memonads.MemoryEntry[]",
+        "name": "",
+        "type": "tuple[]"
       }
     ],
     "stateMutability": "view",

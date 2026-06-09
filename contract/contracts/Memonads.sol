@@ -57,6 +57,8 @@ contract Memonads {
     /// visitor => expert => number of sessions paid (gates reviews)
     mapping(address => mapping(address => uint256)) public sessionsPaid;
     ExpertInfo[] private _experts;
+    /// memories live in a person: expert index => entries
+    mapping(uint256 => MemoryEntry[]) private _expertMemories;
 
     event Registered(address indexed user, string name);
     event MemoryAdded(address indexed user, uint256 index, string section, string title);
@@ -68,6 +70,9 @@ contract Memonads {
     event ExpertCreated(address indexed owner, uint256 index, string name, string section);
     event ExpertRemoved(uint256 index);
     event MemoryEdited(address indexed user, uint256 index);
+    event ExpertMemoryAdded(uint256 indexed expertIndex, uint256 index, string title);
+    event ExpertMemoryEdited(uint256 indexed expertIndex, uint256 index);
+    event ExpertMemoryDeleted(uint256 indexed expertIndex, uint256 index);
 
     error ZeroAmount();
     error NonIntegralTopUp(uint256 valueWei);
@@ -163,6 +168,55 @@ contract Memonads {
         if (_experts[index].owner != msg.sender) revert NotExpertOwner();
         _experts[index].active = false;
         emit ExpertRemoved(index);
+    }
+
+    // ---------- a person's memories (only their owner curates them) ----------
+
+    modifier onlyExpertOwner(uint256 expertIndex) {
+        if (expertIndex >= _experts.length) revert InvalidExpertIndex(expertIndex);
+        if (_experts[expertIndex].owner != msg.sender) revert NotExpertOwner();
+        _;
+    }
+
+    function addExpertMemory(
+        uint256 expertIndex,
+        string calldata title,
+        string calldata content
+    ) external onlyExpertOwner(expertIndex) {
+        if (bytes(title).length == 0 || bytes(content).length == 0) revert EmptyMemory();
+        MemoryEntry[] storage list = _expertMemories[expertIndex];
+        list.push(MemoryEntry(_experts[expertIndex].section, title, content, uint64(block.timestamp)));
+        emit ExpertMemoryAdded(expertIndex, list.length - 1, title);
+    }
+
+    function editExpertMemory(
+        uint256 expertIndex,
+        uint256 index,
+        string calldata title,
+        string calldata content
+    ) external onlyExpertOwner(expertIndex) {
+        MemoryEntry[] storage list = _expertMemories[expertIndex];
+        if (index >= list.length) revert InvalidMemoryIndex(index);
+        if (bytes(title).length == 0 || bytes(content).length == 0) revert EmptyMemory();
+        list[index].title = title;
+        list[index].content = content;
+        emit ExpertMemoryEdited(expertIndex, index);
+    }
+
+    /// Swap-and-pop: ordering is not preserved.
+    function deleteExpertMemory(uint256 expertIndex, uint256 index)
+        external
+        onlyExpertOwner(expertIndex)
+    {
+        MemoryEntry[] storage list = _expertMemories[expertIndex];
+        if (index >= list.length) revert InvalidMemoryIndex(index);
+        list[index] = list[list.length - 1];
+        list.pop();
+        emit ExpertMemoryDeleted(expertIndex, index);
+    }
+
+    function getExpertMemories(uint256 expertIndex) external view returns (MemoryEntry[] memory) {
+        return _expertMemories[expertIndex];
     }
 
     function getExperts() external view returns (ExpertInfo[] memory) {
