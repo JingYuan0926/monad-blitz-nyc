@@ -44,7 +44,9 @@
       "WebFetch(domain:ethglobal.com)",
       "WebFetch(domain:tradersunion.com)",
       "WebFetch(domain:beincrypto.com)",
-      "WebFetch(domain:balajis.com)"
+      "WebFetch(domain:balajis.com)",
+      "WebFetch(domain:www.basketball-reference.com)",
+      "WebFetch(domain:www.landofbasketball.com)"
     ],
     "deny": [
       "Bash(rm -rf /:)",
