@@ -118,8 +118,9 @@ Be practical and concise (2-4 sentences).`;
     setTimeout(() => setJustPosted(false), 2000);
   };
 
+  // bottom-16 keeps the chat input clear of the Low character bar
   return (
-    <aside className="absolute right-4 top-4 bottom-4 w-[380px] max-w-[calc(100vw-2rem)] flex flex-col rounded-2xl border border-slate-700 bg-slate-900/95 text-slate-100 shadow-2xl backdrop-blur">
+    <aside className="absolute right-4 top-4 bottom-16 w-[380px] max-w-[calc(100vw-2rem)] flex flex-col rounded-2xl border border-slate-700 bg-slate-900/95 text-slate-100 shadow-2xl backdrop-blur">
       {/* header */}
       <div className="flex items-start gap-3 p-4 border-b border-slate-700">
         <div
