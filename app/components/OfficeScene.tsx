@@ -1245,6 +1245,7 @@ function Player({
         outfit={{ shirt: "#e3445a", pants: "#1f2a44", hair: "#3b2a1d" }}
         movingRef={movingRef}
       />
+      <Label text="Me" position={[0, 1.85, 0]} height={0.22} color="#facc15" />
       {bubbleText && <SpeechBubble text={bubbleText} position={[0, 2.15, 0]} />}
       {/* marker ring */}
       <mesh position={[0, 0.02, 0]} rotation={[-Math.PI / 2, 0, 0]}>
