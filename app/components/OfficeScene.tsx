@@ -3,7 +3,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { useCursor } from "@react-three/drei";
-import { CanvasTexture, SRGBColorSpace, Vector3, type Group } from "three";
+import { CanvasTexture, NearestFilter, RepeatWrapping, SRGBColorSpace, Vector3, type Group } from "three";
+import { EffectComposer } from "three/examples/jsm/postprocessing/EffectComposer.js";
+import { RenderPixelatedPass } from "three/examples/jsm/postprocessing/RenderPixelatedPass.js";
+import { OutputPass } from "three/examples/jsm/postprocessing/OutputPass.js";
 import { SECTIONS, EXPERTS, type Expert, type Section } from "../data/experts";
 
 export type NearTarget =
@@ -19,23 +22,25 @@ export type NearTarget =
 const WALL_H = 2.1;
 const WALL_T = 0.4;
 
-type WallBox = { x: number; z: number; w: number; d: number };
+// h = rendered height (Habbo-style cutaway: camera-facing walls are stubs,
+// interior walls are half-height so you can always see inside; collision ignores h)
+type WallBox = { x: number; z: number; w: number; d: number; h?: number };
 
 const WALLS: WallBox[] = [
-  // outer shell
+  // outer shell — north & west stay full (back walls), east & south are cutaway stubs
   { x: 0, z: -10, w: 30 + WALL_T, d: WALL_T }, // north
   { x: -15, z: 0, w: WALL_T, d: 20 + WALL_T }, // west
-  { x: 15, z: 0, w: WALL_T, d: 20 + WALL_T }, // east
-  { x: -8.25, z: 10, w: 13.5, d: WALL_T }, // south, left of front door
-  { x: 8.25, z: 10, w: 13.5, d: WALL_T }, // south, right of front door
-  // room dividers
-  { x: -5, z: -4, w: WALL_T, d: 12 },
-  { x: 5, z: -4, w: WALL_T, d: 12 },
+  { x: 15, z: 0, w: WALL_T, d: 20 + WALL_T, h: 0.35 }, // east (cutaway)
+  { x: -8.25, z: 10, w: 13.5, d: WALL_T, h: 0.35 }, // south, left of front door (cutaway)
+  { x: 8.25, z: 10, w: 13.5, d: WALL_T, h: 0.35 }, // south, right of front door (cutaway)
+  // room dividers (half-height so rooms read as a cutaway dollhouse)
+  { x: -5, z: -4, w: WALL_T, d: 12, h: 1.05 },
+  { x: 5, z: -4, w: WALL_T, d: 12, h: 1.05 },
   // lobby wall (z=2) with a doorway into each room
-  { x: -13.25, z: 2, w: 3.5, d: WALL_T },
-  { x: -5, z: 2, w: 7, d: WALL_T },
-  { x: 5, z: 2, w: 7, d: WALL_T },
-  { x: 13.25, z: 2, w: 3.5, d: WALL_T },
+  { x: -13.25, z: 2, w: 3.5, d: WALL_T, h: 1.05 },
+  { x: -5, z: 2, w: 7, d: WALL_T, h: 1.05 },
+  { x: 5, z: 2, w: 7, d: WALL_T, h: 1.05 },
+  { x: 13.25, z: 2, w: 3.5, d: WALL_T, h: 1.05 },
 ];
 
 const PLAYER_RADIUS = 0.45;
@@ -132,7 +137,7 @@ const BEHAVIORS: Record<string, Behavior> = (() => {
 function Label({
   text,
   position,
-  height = 0.25,
+  height = 0.32,
   color = "#ffffff",
 }: {
   text: string;
@@ -240,11 +245,105 @@ function SpeechBubble({ text, position }: { text: string; position: [number, num
 
   useEffect(() => () => texture.dispose(), [texture]);
 
-  const height = Math.min(1.3, 0.42 + (1 / aspect) * 1.1);
+  const height = Math.min(2.2, 0.7 + (1 / aspect) * 1.8);
   return (
     <sprite position={position} scale={[height * aspect, height, 1]} renderOrder={10}>
       <spriteMaterial map={texture} transparent depthWrite={false} depthTest={false} />
     </sprite>
+  );
+}
+
+/* ================= Pixel-art rendering =================
+   The whole scene is rendered through three's RenderPixelatedPass:
+   a low-res render target upscaled with nearest-neighbor (chunky pixels)
+   plus depth/normal edge darkening (the dark sprite outlines). */
+
+const PIXEL_SIZE = 2;
+
+function PixelArtRenderer() {
+  const { gl, scene, camera, size } = useThree();
+
+  const composer = useMemo(() => {
+    const c = new EffectComposer(gl);
+    const pixelPass = new RenderPixelatedPass(PIXEL_SIZE, scene, camera);
+    pixelPass.normalEdgeStrength = 0.4;
+    pixelPass.depthEdgeStrength = 0.55;
+    c.addPass(pixelPass);
+    c.addPass(new OutputPass());
+    return c;
+  }, [gl, scene, camera]);
+
+  useEffect(() => {
+    // keep the composer in sync with the renderer's device pixel ratio so the
+    // low-res buffer is upscaled 1:1 to physical pixels (no browser blur)
+    composer.setPixelRatio(gl.getPixelRatio());
+    composer.setSize(size.width, size.height);
+    gl.domElement.style.imageRendering = "pixelated";
+  }, [composer, gl, size.width, size.height]);
+
+  useEffect(() => () => composer.dispose(), [composer]);
+
+  // priority 1 takes over rendering from r3f's default loop
+  useFrame(() => composer.render(), 1);
+  return null;
+}
+
+/* ================= Tile floor (canvas checker texture) =================
+   Habbo-style tile grid: two-tone checker with darker grout lines,
+   nearest-filtered so the tiles stay crisp under the pixel pass. */
+
+function shade(hex: string, amt: number) {
+  const n = parseInt(hex.slice(1), 16);
+  const r = Math.max(0, Math.min(255, (n >> 16) + amt));
+  const g = Math.max(0, Math.min(255, ((n >> 8) & 0xff) + amt));
+  const b = Math.max(0, Math.min(255, (n & 0xff) + amt));
+  return `rgb(${r},${g},${b})`;
+}
+
+function TileFloor({
+  position,
+  size,
+  color,
+  tile = 1,
+}: {
+  position: [number, number, number];
+  size: [number, number];
+  color: string;
+  tile?: number; // world units per tile
+}) {
+  const [w, d] = size;
+  const texture = useMemo(() => {
+    const canvas = document.createElement("canvas");
+    canvas.width = 128;
+    canvas.height = 128;
+    const ctx = canvas.getContext("2d")!;
+    ctx.fillStyle = color;
+    ctx.fillRect(0, 0, 128, 128);
+    ctx.fillStyle = shade(color, -14);
+    ctx.fillRect(0, 0, 64, 64);
+    ctx.fillRect(64, 64, 64, 64);
+    ctx.strokeStyle = shade(color, -36);
+    ctx.lineWidth = 3;
+    for (const [gx, gy] of [[0, 0], [64, 0], [0, 64], [64, 64]] as const) {
+      ctx.strokeRect(gx + 1.5, gy + 1.5, 61, 61);
+    }
+    const tex = new CanvasTexture(canvas);
+    tex.colorSpace = SRGBColorSpace;
+    tex.wrapS = tex.wrapT = RepeatWrapping;
+    tex.magFilter = NearestFilter;
+    tex.minFilter = NearestFilter;
+    tex.generateMipmaps = false;
+    tex.repeat.set(w / (tile * 2), d / (tile * 2)); // texture holds a 2x2 checker
+    return tex;
+  }, [color, w, d, tile]);
+
+  useEffect(() => () => texture.dispose(), [texture]);
+
+  return (
+    <mesh position={position} rotation={[-Math.PI / 2, 0, 0]}>
+      <planeGeometry args={size} />
+      <meshStandardMaterial map={texture} />
+    </mesh>
   );
 }
 
@@ -356,12 +455,16 @@ function Plant({ position }: { position: [number, number, number] }) {
   return (
     <group position={position}>
       <mesh position={[0, 0.15, 0]} castShadow>
-        <cylinderGeometry args={[0.16, 0.12, 0.3, 12]} />
+        <boxGeometry args={[0.3, 0.3, 0.3]} />
         <meshStandardMaterial color="#9a3412" />
       </mesh>
       <mesh position={[0, 0.45, 0]} castShadow>
-        <sphereGeometry args={[0.25, 16, 16]} />
+        <boxGeometry args={[0.46, 0.36, 0.46]} />
         <meshStandardMaterial color="#16a34a" />
+      </mesh>
+      <mesh position={[0, 0.68, 0]} castShadow>
+        <boxGeometry args={[0.28, 0.2, 0.28]} />
+        <meshStandardMaterial color="#22b357" />
       </mesh>
     </group>
   );
@@ -746,8 +849,8 @@ function Reception({ active }: { active: boolean }) {
         <ringGeometry args={[0.5, 0.65, 32]} />
         <meshBasicMaterial color={active ? "#ffffff" : "#8b5cf6"} transparent opacity={active ? 0.9 : 0.45} />
       </mesh>
-      <Label text="🛎 RECEPTION" position={[0, 2.5, 0]} height={0.3} color="#fbbf24" />
-      <Label text="check in your memories" position={[0, 2.2, 0]} height={0.17} color="#e2e8f0" />
+      <Label text="🛎 RECEPTION" position={[0, 2.75, 0]} height={0.62} color="#fbbf24" />
+      <Label text="check in your memories" position={[0, 2.22, 0]} height={0.3} color="#e2e8f0" />
     </group>
   );
 }
@@ -814,8 +917,8 @@ function Elevator() {
           <meshStandardMaterial color="#aab2bd" metalness={0.5} roughness={0.35} />
         </mesh>
       ))}
-      <Label text="🛗 ELEVATOR" position={[0.3, 2.55, 0]} height={0.24} color="#e2e8f0" />
-      <Label text="floors 2-4 coming soon" position={[0.3, 2.28, 0]} height={0.14} color="#94a3b8" />
+      <Label text="🛗 ELEVATOR" position={[0.3, 2.62, 0]} height={0.34} color="#e2e8f0" />
+      <Label text="floors 2-4 coming soon" position={[0.3, 2.26, 0]} height={0.2} color="#94a3b8" />
     </group>
   );
 }
@@ -900,26 +1003,32 @@ function Character({
           <meshStandardMaterial color={outfit.shirt} />
         </mesh>
       </group>
-      {/* head + hair */}
-      <mesh position={[0, 1.22, 0]} castShadow>
-        <boxGeometry args={[0.42, 0.42, 0.4]} />
+      {/* head + hair (chibi: oversized head, pixel eyes) */}
+      <mesh position={[0, 1.2, 0]} castShadow>
+        <boxGeometry args={[0.56, 0.5, 0.52]} />
         <meshStandardMaterial color="#fcd9b8" />
       </mesh>
-      <mesh position={[0, 1.42, -0.02]} castShadow>
-        <boxGeometry args={[0.46, 0.16, 0.44]} />
+      {[-0.12, 0.12].map((x) => (
+        <mesh key={x} position={[x, 1.21, 0.27]}>
+          <boxGeometry args={[0.07, 0.1, 0.02]} />
+          <meshStandardMaterial color="#1f2937" />
+        </mesh>
+      ))}
+      <mesh position={[0, 1.47, -0.02]} castShadow>
+        <boxGeometry args={[0.6, 0.18, 0.56]} />
         <meshStandardMaterial color={outfit.hair} />
       </mesh>
 
       {/* job details */}
       {outfit.accessory === "headphones" && (
         <>
-          <mesh position={[0, 1.48, 0]}>
-            <boxGeometry args={[0.5, 0.07, 0.12]} />
+          <mesh position={[0, 1.58, 0]}>
+            <boxGeometry args={[0.64, 0.07, 0.14]} />
             <meshStandardMaterial color="#111827" />
           </mesh>
-          {[-0.25, 0.25].map((x) => (
-            <mesh key={x} position={[x, 1.24, 0]}>
-              <boxGeometry args={[0.09, 0.16, 0.16]} />
+          {[-0.32, 0.32].map((x) => (
+            <mesh key={x} position={[x, 1.22, 0]}>
+              <boxGeometry args={[0.09, 0.18, 0.2]} />
               <meshStandardMaterial color={outfit.accent ?? "#111827"} />
             </mesh>
           ))}
@@ -928,8 +1037,8 @@ function Character({
       {outfit.accessory === "labcoat" && (
         <>
           {/* glasses */}
-          <mesh position={[0, 1.26, 0.21]}>
-            <boxGeometry args={[0.36, 0.07, 0.03]} />
+          <mesh position={[0, 1.26, 0.27]}>
+            <boxGeometry args={[0.48, 0.08, 0.03]} />
             <meshStandardMaterial color="#111827" />
           </mesh>
           {/* colored shirt under the coat */}
@@ -940,8 +1049,8 @@ function Character({
         </>
       )}
       {outfit.accessory === "headband" && (
-        <mesh position={[0, 1.34, 0]}>
-          <boxGeometry args={[0.46, 0.09, 0.45]} />
+        <mesh position={[0, 1.38, 0]}>
+          <boxGeometry args={[0.6, 0.1, 0.58]} />
           <meshStandardMaterial color={outfit.accent ?? "#ef4444"} />
         </mesh>
       )}
@@ -970,7 +1079,7 @@ function Receptionist() {
         outfit={{ shirt: "#e2e8f0", pants: "#111827", hair: "#52525b", accessory: "vest", accent: "#8b5cf6" }}
         movingRef={movingRef}
       />
-      <Label text="receptionist" position={[0, 1.72, 0]} height={0.15} color="#cbd5e1" />
+      <Label text="receptionist" position={[0, 1.84, 0]} height={0.28} color="#cbd5e1" />
     </group>
   );
 }
@@ -1115,20 +1224,20 @@ function ExpertAvatar({
       </mesh>
       <Label
         text={expert.name}
-        position={[0, 1.85, 0]}
-        height={0.22}
+        position={[0, 2.05, 0]}
+        height={0.42}
         color={lit ? "#ffffff" : "#e2e8f0"}
       />
       {lit && (
         <Label
           text={`${expert.priceCredits.toLocaleString()} credits · ★ ${expert.rating}`}
-          position={[0, 1.63, 0]}
-          height={0.17}
+          position={[0, 1.64, 0]}
+          height={0.34}
           color="#fbbf24"
         />
       )}
-      {bubble && !bubbleText && <Label text={bubble} position={[0.32, 2.08, 0]} height={0.22} />}
-      {bubbleText && <SpeechBubble text={bubbleText} position={[0, 2.45, 0]} />}
+      {bubble && !bubbleText && <Label text={bubble} position={[0.32, 2.2, 0]} height={0.3} />}
+      {bubbleText && <SpeechBubble text={bubbleText} position={[0, 2.7, 0]} />}
     </group>
   );
 }
@@ -1245,8 +1354,8 @@ function Player({
         outfit={{ shirt: "#e3445a", pants: "#1f2a44", hair: "#3b2a1d" }}
         movingRef={movingRef}
       />
-      <Label text="Me" position={[0, 1.85, 0]} height={0.22} color="#facc15" />
-      {bubbleText && <SpeechBubble text={bubbleText} position={[0, 2.15, 0]} />}
+      <Label text="Me" position={[0, 2.0, 0]} height={0.42} color="#facc15" />
+      {bubbleText && <SpeechBubble text={bubbleText} position={[0, 2.4, 0]} />}
       {/* marker ring */}
       <mesh position={[0, 0.02, 0]} rotation={[-Math.PI / 2, 0, 0]}>
         <ringGeometry args={[0.3, 0.4, 32]} />
@@ -1256,6 +1365,9 @@ function Player({
   );
 }
 
+// fixed isometric offset: 45° azimuth, ~27° elevation (2:1 dimetric, Habbo-style)
+const ISO_OFFSET = new Vector3(16, 11.5, 16);
+
 function FollowCamera({ positionRef }: { positionRef: React.MutableRefObject<Vector3> }) {
   const { camera } = useThree();
   const look = useRef(new Vector3());
@@ -1263,8 +1375,11 @@ function FollowCamera({ positionRef }: { positionRef: React.MutableRefObject<Vec
   useFrame((_, delta) => {
     const pos = positionRef.current;
     const lerp = 1 - Math.pow(0.0001, delta);
-    camera.position.lerp(new Vector3(pos.x, pos.y + 10, pos.z + 8.5), lerp);
-    look.current.lerp(new Vector3(pos.x, pos.y + 1, pos.z), lerp);
+    camera.position.lerp(
+      new Vector3(pos.x + ISO_OFFSET.x, pos.y + ISO_OFFSET.y, pos.z + ISO_OFFSET.z),
+      lerp
+    );
+    look.current.lerp(new Vector3(pos.x, pos.y + 0.5, pos.z), lerp);
     camera.lookAt(look.current);
   });
 
@@ -1276,17 +1391,11 @@ function FollowCamera({ positionRef }: { positionRef: React.MutableRefObject<Vec
 function Building() {
   return (
     <group>
-      {/* room + lobby floors */}
+      {/* room + lobby floors (checker tile grid) */}
       {SECTIONS.map((s) => (
-        <mesh key={s.id} position={[s.position[0], 0.01, -4]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-          <planeGeometry args={[10, 12]} />
-          <meshStandardMaterial color={s.floorColor} />
-        </mesh>
+        <TileFloor key={s.id} position={[s.position[0], 0.01, -4]} size={[10, 12]} color={s.floorColor} />
       ))}
-      <mesh position={[0, 0.01, 6]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-        <planeGeometry args={[30, 8]} />
-        <meshStandardMaterial color="#c9a06c" />
-      </mesh>
+      <TileFloor position={[0, 0.01, 6]} size={[30, 8]} color="#c9a06c" />
       {/* welcome mat at the front door */}
       <mesh position={[0, 0.02, 9.2]} rotation={[-Math.PI / 2, 0, 0]}>
         <planeGeometry args={[2.6, 1.4]} />
@@ -1302,16 +1411,19 @@ function Building() {
         <meshStandardMaterial color="#a83232" />
       </mesh>
 
-      {/* walls */}
-      {WALLS.map((w, i) => (
-        <mesh key={i} position={[w.x, WALL_H / 2, w.z]} castShadow receiveShadow>
-          <boxGeometry args={[w.w, WALL_H, w.d]} />
-          <meshStandardMaterial color="#e6d3ae" />
-        </mesh>
-      ))}
+      {/* walls (cutaway: rendered height varies, collision uses full footprint) */}
+      {WALLS.map((w, i) => {
+        const h = w.h ?? WALL_H;
+        return (
+          <mesh key={i} position={[w.x, h / 2, w.z]} castShadow receiveShadow>
+            <boxGeometry args={[w.w, h, w.d]} />
+            <meshStandardMaterial color="#e6d3ae" />
+          </mesh>
+        );
+      })}
 
       {/* building sign */}
-      <Label text="MEMONADS" position={[0, 3.6, 9.8]} height={0.65} color="#ffffff" />
+      <Label text="MEMONADS" position={[0, 3.7, 9.8]} height={0.9} color="#ffffff" />
 
       {/* lobby: lounge, elevator, plants */}
       <Lounge />
@@ -1330,9 +1442,9 @@ function SectionRoom({ section }: { section: Section }) {
   return (
     <group>
       <Label
-        text={`${section.emoji} ${section.name.toUpperCase()}`}
-        position={[cx, 3.1, -4]}
-        height={0.6}
+        text={section.name.toUpperCase()}
+        position={[cx, 3.2, -4]}
+        height={1}
         color={section.color}
       />
       {/* doorway accent strip */}
@@ -1389,7 +1501,7 @@ function SectionRoom({ section }: { section: Section }) {
             <planeGeometry args={[1.3, 0.9]} />
             <meshStandardMaterial color="#0c4a6e" emissive="#0ea5e9" emissiveIntensity={0.25} />
           </mesh>
-          <Label text="</>" position={[cx - 4, 1.4, -9.5]} height={0.4} color="#7dd3fc" />
+          <Label text="</>" position={[cx - 4, 1.45, -9.5]} height={0.55} color="#7dd3fc" />
         </>
       )}
       {section.id === "science" && (
@@ -1413,7 +1525,7 @@ function SectionRoom({ section }: { section: Section }) {
             <boxGeometry args={[2, 1.1, 0.08]} />
             <meshStandardMaterial color="#f8fafc" />
           </mesh>
-          <Label text="E = mc²" position={[cx - 4.6, 1.45, -4]} height={0.24} color="#334155" />
+          <Label text="E = mc²" position={[cx - 4.6, 1.5, -4]} height={0.34} color="#334155" />
         </>
       )}
       {section.id === "sport" && (
@@ -1448,21 +1560,12 @@ function SectionRoom({ section }: { section: Section }) {
 function Grounds() {
   return (
     <group>
-      {/* grass */}
-      <mesh position={[0, -0.01, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-        <planeGeometry args={[64, 48]} />
-        <meshStandardMaterial color="#74bd58" />
-      </mesh>
+      {/* grass (big soft checker like a mowed lawn) */}
+      <TileFloor position={[0, -0.01, 0]} size={[64, 48]} color="#74bd58" tile={2} />
       {/* path from the front door */}
-      <mesh position={[0, 0, 13.5]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-        <planeGeometry args={[3, 7]} />
-        <meshStandardMaterial color="#b9b3a4" />
-      </mesh>
+      <TileFloor position={[0, 0, 13.5]} size={[3, 7]} color="#b9b3a4" />
       {/* parking lot */}
-      <mesh position={[23, 0, 6]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-        <planeGeometry args={[12, 12]} />
-        <meshStandardMaterial color="#8c8c8c" />
-      </mesh>
+      <TileFloor position={[23, 0, 6]} size={[12, 12]} color="#8c8c8c" tile={2} />
       <Car position={[20.5, 0, 3]} color="#3b5bd6" />
       <Car position={[23.5, 0, 3]} color="#d63b3b" />
       <Car position={[26.5, 0, 3]} color="#3bd66e" />
@@ -1520,25 +1623,19 @@ export default function OfficeScene({
 
   return (
     <Canvas
-      shadows
-      camera={{ position: [0, 16, 24], fov: 50 }}
+      orthographic
+      flat
+      dpr={[1, 2]}
+      gl={{ antialias: false }}
+      camera={{ zoom: 50, position: [16, 11.5, 29], near: 0.1, far: 300 }}
       onPointerMissed={() => onSelectExpert(null)}
     >
-      <color attach="background" args={["#f0c8c4"]} />
-      <fog attach="fog" args={["#f0c8c4", 38, 60]} />
+      <color attach="background" args={["#f3f0e7"]} />
 
-      <ambientLight intensity={0.6} />
-      <directionalLight
-        position={[14, 20, 10]}
-        intensity={1.2}
-        castShadow
-        shadow-mapSize-width={2048}
-        shadow-mapSize-height={2048}
-        shadow-camera-left={-30}
-        shadow-camera-right={30}
-        shadow-camera-top={30}
-        shadow-camera-bottom={-30}
-      />
+      {/* flat sprite-style lighting: strong ambient + one directional so each
+          box face gets its own uniform tone (no shadows, no gradients) */}
+      <ambientLight intensity={0.85} />
+      <directionalLight position={[8, 14, 5]} intensity={0.7} />
 
       <Grounds />
       <Building />
@@ -1570,6 +1667,7 @@ export default function OfficeScene({
         }}
       />
       <FollowCamera positionRef={playerPos} />
+      <PixelArtRenderer />
     </Canvas>
   );
 }
