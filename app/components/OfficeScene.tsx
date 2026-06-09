@@ -979,7 +979,7 @@ function Receptionist() {
 
 const WORK_BUBBLE: Record<string, string> = {
   coding: "⌨️",
-  science: "🧪",
+  science: "💻",
   sport: "🏋️",
 };
 

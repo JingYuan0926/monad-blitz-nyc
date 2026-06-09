@@ -40,8 +40,8 @@ export const SECTIONS: Section[] = [
   },
   {
     id: "science",
-    name: "Science",
-    emoji: "🔬",
+    name: "Tech",
+    emoji: "💻",
     color: "#10b981",
     floorColor: "#5e9b80",
     position: [0, 0, -4],
@@ -61,7 +61,7 @@ export const EXPERTS: Expert[] = [
   {
     id: "jason",
     activity: "working",
-    name: "Jason Lee",
+    name: "Vitalik Buterin",
     title: "40x Hackathon Winner",
     sectionId: "coding",
     priceCredits: 5_000,
@@ -77,7 +77,7 @@ export const EXPERTS: Expert[] = [
   {
     id: "mira",
     activity: "talking",
-    name: "Mira Chen",
+    name: "Kartik Talwar",
     title: "Staff Engineer, 15y",
     sectionId: "coding",
     priceCredits: 8_000,
@@ -92,7 +92,7 @@ export const EXPERTS: Expert[] = [
   {
     id: "otto",
     activity: "talking",
-    name: "Otto Reyes",
+    name: "Balaji Srinivasan",
     title: "Indie Hacker",
     sectionId: "coding",
     priceCredits: 3_000,
@@ -108,7 +108,7 @@ export const EXPERTS: Expert[] = [
   {
     id: "dr-amara",
     activity: "wandering",
-    name: "Dr. Amara Osei",
+    name: "Elon Musk",
     title: "Surgeon, 30y experience",
     sectionId: "science",
     priceCredits: 12_000,
@@ -123,7 +123,7 @@ export const EXPERTS: Expert[] = [
   {
     id: "felix",
     activity: "working",
-    name: "Felix Norden",
+    name: "Mark Zuckerberg",
     title: "Physics PhD, Educator",
     sectionId: "science",
     priceCredits: 4_000,
@@ -138,7 +138,7 @@ export const EXPERTS: Expert[] = [
   {
     id: "lin",
     activity: "resting",
-    name: "Lin Zhao",
+    name: "Jensen Huang",
     title: "Biotech Researcher",
     sectionId: "science",
     priceCredits: 9_000,
@@ -154,7 +154,7 @@ export const EXPERTS: Expert[] = [
   {
     id: "coach-d",
     activity: "wandering",
-    name: "Coach Darius",
+    name: "Stephen Curry",
     title: "Pro Basketball Coach",
     sectionId: "sport",
     priceCredits: 6_000,
@@ -169,7 +169,7 @@ export const EXPERTS: Expert[] = [
   {
     id: "sana",
     activity: "resting",
-    name: "Sana Iqbal",
+    name: "Cristiano Ronaldo",
     title: "Olympic Sprinter",
     sectionId: "sport",
     priceCredits: 10_000,
@@ -184,7 +184,7 @@ export const EXPERTS: Expert[] = [
   {
     id: "ben",
     activity: "working",
-    name: "Ben Carter",
+    name: "Jeremy Lin",
     title: "S&C / Nutrition Coach",
     sectionId: "sport",
     priceCredits: 4_000,
