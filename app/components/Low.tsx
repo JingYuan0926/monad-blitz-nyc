@@ -1,6 +1,6 @@
 "use client";
 
-import { EXPERTS, type Expert } from "../data/experts";
+import { type Expert } from "../data/experts";
 
 /* same hair palette as the in-scene avatars (OfficeScene outfitFor) */
 const HAIR_COLORS = ["#3b2a1d", "#111827", "#92400e", "#4b5563", "#1c1917", "#7c2d12", "#0f172a", "#57534e", "#451a03"];
@@ -48,10 +48,10 @@ function ChipFace({ expert, index }: { expert: Expert; index: number }) {
 
 /* Habbo-style bottom bar: a row of green name chips, one per character,
    each with a small blocky avatar head poking out of the pill. */
-export default function Low({ onSelect }: { onSelect: (expert: Expert) => void }) {
+export default function Low({ experts, onSelect }: { experts: Expert[]; onSelect: (expert: Expert) => void }) {
   return (
     <footer className="absolute bottom-0 left-0 right-0 z-10 flex items-center gap-3 overflow-x-auto border-t-4 border-[#8e9496] bg-[#a6abad] px-4 py-2 shadow-[inset_0_2px_0_rgba(255,255,255,0.4)]">
-      {EXPERTS.map((e, i) => (
+      {experts.map((e, i) => (
         <button
           key={e.id}
           onClick={() => onSelect(e)}

@@ -468,6 +468,7 @@ export default function Home() {
 
       {/* habbo-style bottom bar with character chips */}
       <Low
+        experts={experts}
         onSelect={(e) => {
           setSelected(e);
           setVaultOpen(false);
