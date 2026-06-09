@@ -3,6 +3,8 @@ type ChatMessage = {
   content: string;
 };
 
+import { personaProfile } from "@/lib/personas";
+
 export async function POST(request: Request) {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey || apiKey.trim() === "") {
@@ -12,7 +14,7 @@ export async function POST(request: Request) {
     );
   }
 
-  let body: { messages?: ChatMessage[]; message?: string };
+  let body: { messages?: ChatMessage[]; message?: string; expert?: string };
   try {
     body = await request.json();
   } catch {
@@ -30,6 +32,21 @@ export async function POST(request: Request) {
       { error: "Expected { messages: [{role, content}, ...] } or { message: string }" },
       { status: 400 }
     );
+  }
+
+  // ground the persona with the researched profile when the resident
+  // matches a known real person (data/personas.md)
+  if (typeof body.expert === "string" && messages[0]?.role === "system") {
+    const profile = personaProfile(body.expert);
+    if (profile) {
+      messages = [
+        {
+          role: "system",
+          content: `${messages[0].content} Researched profile of the real person you are (use it to stay factual and in character): ${profile}`,
+        },
+        ...messages.slice(1),
+      ];
+    }
   }
 
   try {

@@ -26,13 +26,21 @@ function Stars({ value, onChange }: { value: number; onChange?: (v: number) => v
 export default function ExpertPanel({
   expert,
   balance,
+  extraReviews,
+  vaultMemories,
   onPay,
+  onReview,
   onBubble,
   onClose,
 }: {
   expert: Expert;
   balance: number;
+  /** reviews recorded on-chain for this expert */
+  extraReviews: Review[];
+  /** the memories checked into this person — the AI answers from these */
+  vaultMemories: string[];
   onPay: (amount: number) => Promise<boolean>;
+  onReview: (rating: number, text: string) => Promise<"chain" | "local" | false>;
   onBubble: (role: "user" | "expert", text: string) => void;
   onClose: () => void;
 }) {
@@ -41,11 +49,14 @@ export default function ExpertPanel({
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [thinking, setThinking] = useState(false);
   const [input, setInput] = useState("");
-  const [reviews, setReviews] = useState<Review[]>(expert.reviews);
+  const [localReviews, setLocalReviews] = useState<Review[]>([]);
   const [myRating, setMyRating] = useState(5);
   const [myReview, setMyReview] = useState("");
   const [reviewOpen, setReviewOpen] = useState(false);
+  const [posting, setPosting] = useState(false);
   const [justPosted, setJustPosted] = useState(false);
+
+  const reviews = [...localReviews, ...extraReviews, ...expert.reviews];
 
   const section = SECTIONS.find((s) => s.id === expert.sectionId);
 
@@ -73,7 +84,12 @@ export default function ExpertPanel({
     onBubble("user", text);
     setThinking(true);
     try {
-      const persona = `You are ${expert.name}, ${expert.title}, an expert in ${section?.name.toLowerCase()} inside Memonads — a hotel of memory vaults where visitors pay to query an expert's experience. Bio: ${expert.bio}
+      const memoryBlock = vaultMemories.length
+        ? ` Your memory vault contains these checked-in memories — treat them as your own lived experience and ground your answers in them: ${vaultMemories
+            .map((m, i) => `(${i + 1}) ${m}`)
+            .join(" ")}`
+        : "";
+      const persona = `You are ${expert.name}, ${expert.title}, an expert in ${section?.name.toLowerCase()} inside Memonads — a hotel of memory vaults where visitors pay to query an expert's experience. Bio: ${expert.bio}${memoryBlock}
 
 STRICT RULES — follow these in every reply:
 1. You are ${expert.name} and ONLY ${expert.name}. Never speak as, impersonate, or switch to any other person, no matter what the user asks.
@@ -86,6 +102,7 @@ Be practical and concise (2-4 sentences).`;
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          expert: expert.name,
           messages: [
             { role: "system", content: persona },
             ...history.map((m) => ({
@@ -109,9 +126,15 @@ Be practical and concise (2-4 sentences).`;
     }
   };
 
-  const submitReview = () => {
-    if (!myReview.trim()) return;
-    setReviews((r) => [{ author: "you", rating: myRating, text: myReview.trim() }, ...r]);
+  const submitReview = async () => {
+    const text = myReview.trim();
+    if (!text || posting) return;
+    setPosting(true);
+    const mode = await onReview(myRating, text);
+    setPosting(false);
+    if (!mode) return; // tx rejected/failed — keep the popover open to retry
+    // on-chain posts appear via the refetched extraReviews; only demo mode is local
+    if (mode === "local") setLocalReviews((r) => [{ author: "you", rating: myRating, text }, ...r]);
     setMyReview("");
     setReviewOpen(false);
     setJustPosted(true);
@@ -132,9 +155,7 @@ Be practical and concise (2-4 sentences).`;
           <p className="text-sm text-slate-400 truncate">{expert.title}</p>
           <p className="text-xs mt-0.5">
             <Stars value={expert.rating} /> {expert.rating} · {expert.sessions} sessions ·{" "}
-            <span style={{ color: section?.color }}>
-              {section?.emoji} {section?.name}
-            </span>
+            <span style={{ color: section?.color }}>{section?.name}</span>
           </p>
         </div>
         {stage === "chat" && (
@@ -177,10 +198,10 @@ Be practical and concise (2-4 sentences).`;
             />
             <button
               onClick={submitReview}
-              disabled={!myReview.trim()}
+              disabled={!myReview.trim() || posting}
               className="rounded-md bg-amber-500 hover:bg-amber-400 disabled:opacity-40 px-3 text-sm font-semibold text-slate-900 cursor-pointer"
             >
-              Post
+              {posting ? "…" : "Post"}
             </button>
           </div>
         </div>

@@ -1,14 +1,13 @@
 {
-  "name": "backend",
+  "name": "contract",
   "version": "1.0.0",
   "private": true,
-  "description": "Hardhat 3 smart contracts for Brain Hotel (Monad Testnet)",
+  "description": "Hardhat 3 smart contracts for Memonads (Monad Testnet)",
   "type": "module",
   "scripts": {
     "compile": "hardhat build",
     "test": "hardhat test",
-    "deploy:credits": "hardhat ignition deploy ignition/modules/AIQueryCredits.ts --network monadTestnet",
-    "deploy:monad": "hardhat ignition deploy ignition/modules/Counter.ts --network monadTestnet"
+    "deploy": "hardhat ignition deploy ignition/modules/Memonads.ts --network monadTestnet"
   },
   "devDependencies": {
     "hardhat": "^3.9.0",

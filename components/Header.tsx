@@ -4,17 +4,14 @@ import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { useAccount, useReadContract } from "wagmi";
 import { monadTestnet } from "wagmi/chains";
 
-import {
-  AI_QUERY_CREDITS_ADDRESS,
-  aiQueryCreditsAbi,
-} from "@/lib/aiQueryCredits";
+import { MEMONADS_ADDRESS, memonadsAbi } from "@/lib/memonads";
 
 function CreditsBadge() {
   const { address, isConnected } = useAccount();
 
   const { data: balance, isLoading } = useReadContract({
-    address: AI_QUERY_CREDITS_ADDRESS,
-    abi: aiQueryCreditsAbi,
+    address: MEMONADS_ADDRESS,
+    abi: memonadsAbi,
     functionName: "credits",
     args: [address ?? "0x0000000000000000000000000000000000000000"],
     chainId: monadTestnet.id,
@@ -29,7 +26,6 @@ function CreditsBadge() {
 
   return (
     <span className="flex items-center gap-1.5 rounded-full border border-black/[.08] bg-zinc-50 px-3 py-1.5 text-sm font-medium text-black dark:border-white/[.145] dark:bg-zinc-900 dark:text-zinc-50">
-      <span aria-hidden>⚡</span>
       {isLoading || balance === undefined
         ? "…"
         : `${balance.toLocaleString()} credits`}

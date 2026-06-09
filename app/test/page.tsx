@@ -11,10 +11,11 @@ import {
 } from "wagmi";
 import { monadTestnet } from "wagmi/chains";
 import {
-  AI_QUERY_CREDITS_ADDRESS,
+  MEMONADS_ADDRESS,
   WEI_PER_CREDIT,
-  aiQueryCreditsAbi,
-} from "@/lib/aiQueryCredits";
+  expertAddress,
+  memonadsAbi,
+} from "@/lib/memonads";
 
 type Message = { role: "user" | "assistant"; content: string };
 
@@ -54,34 +55,35 @@ const prepareTopUp: PrepareAction = (raw) => {
     return "Amount must be a multiple of 0.0001 MON (1 credit), e.g. 0.001.";
   return (write) =>
     write({
-      abi: aiQueryCreditsAbi,
-      address: AI_QUERY_CREDITS_ADDRESS,
+      abi: memonadsAbi,
+      address: MEMONADS_ADDRESS,
       chainId: monadTestnet.id,
       functionName: "topUp",
       value: wei,
     });
 };
 
-function prepareCreditCall(fn: "consume" | "withdraw"): PrepareAction {
+function prepareCreditCall(fn: "paySession" | "withdraw"): PrepareAction {
   return (raw) => {
     const trimmed = raw.trim();
     if (!/^\d+$/.test(trimmed)) return "Enter a whole number of credits.";
     const amount = BigInt(trimmed);
     if (amount <= ZERO) return "Amount must be at least 1 credit.";
-    if (fn === "consume") {
+    if (fn === "paySession") {
       return (write) =>
         write({
-          abi: aiQueryCreditsAbi,
-          address: AI_QUERY_CREDITS_ADDRESS,
+          abi: memonadsAbi,
+          address: MEMONADS_ADDRESS,
           chainId: monadTestnet.id,
-          functionName: "consume",
-          args: [amount],
+          functionName: "paySession",
+          // pay the demo expert (Jason) — sessions in the hotel pay real experts
+          args: [expertAddress("jason"), amount],
         });
     }
     return (write) =>
       write({
-        abi: aiQueryCreditsAbi,
-        address: AI_QUERY_CREDITS_ADDRESS,
+        abi: memonadsAbi,
+        address: MEMONADS_ADDRESS,
         chainId: monadTestnet.id,
         functionName: "withdraw",
         args: [amount],
@@ -191,8 +193,8 @@ function ActionRow({
 function CreditsPanel() {
   const { address, isConnected } = useAccount();
   const { data: balance, refetch } = useReadContract({
-    abi: aiQueryCreditsAbi,
-    address: AI_QUERY_CREDITS_ADDRESS,
+    abi: memonadsAbi,
+    address: MEMONADS_ADDRESS,
     chainId: monadTestnet.id,
     functionName: "credits",
     args: address ? [address] : undefined,
@@ -241,7 +243,7 @@ function CreditsPanel() {
         defaultValue="1"
         step="1"
         disabled={!isConnected}
-        prepare={prepareCreditCall("consume")}
+        prepare={prepareCreditCall("paySession")}
         onConfirmed={handleConfirmed}
       />
       <ActionRow

@@ -23,7 +23,6 @@ export type Expert = {
 export type Section = {
   id: string;
   name: string;
-  emoji: string;
   color: string; // rug / accent color
   floorColor: string;
   position: [number, number, number]; // room center in the office
@@ -33,7 +32,6 @@ export const SECTIONS: Section[] = [
   {
     id: "coding",
     name: "Blockchain",
-    emoji: "⛓️",
     color: "#6366f1",
     floorColor: "#46519e",
     position: [-10, 0, -4],
@@ -41,7 +39,6 @@ export const SECTIONS: Section[] = [
   {
     id: "science",
     name: "Tech",
-    emoji: "💻",
     color: "#10b981",
     floorColor: "#5e9b80",
     position: [0, 0, -4],
@@ -49,7 +46,6 @@ export const SECTIONS: Section[] = [
   {
     id: "sport",
     name: "Sport",
-    emoji: "🏀",
     color: "#f59e0b",
     floorColor: "#c0985f",
     position: [10, 0, -4],
@@ -62,11 +58,11 @@ export const EXPERTS: Expert[] = [
     id: "jason",
     activity: "working",
     name: "Vitalik Buterin",
-    title: "40x Hackathon Winner",
+    title: "Ethereum Co-founder",
     sectionId: "coding",
     priceCredits: 5_000,
     color: "#818cf8",
-    bio: "Won 40+ hackathons in 3 years. Ask me how to pick ideas, build fast, and pitch to win.",
+    bio: "Co-created Ethereum at 19. Protocol design, token economics, and watching ideas survive contact with reality.",
     rating: 4.9,
     sessions: 312,
     reviews: [
@@ -78,11 +74,11 @@ export const EXPERTS: Expert[] = [
     id: "mira",
     activity: "talking",
     name: "Kartik Talwar",
-    title: "Staff Engineer, 15y",
+    title: "ETHGlobal Co-founder",
     sectionId: "coding",
     priceCredits: 8_000,
     color: "#a5b4fc",
-    bio: "15 years scaling backend systems. Architecture reviews, career advice, debugging war stories.",
+    bio: "Built the hackathons where half of crypto got its start. Ask me how winning teams actually work.",
     rating: 4.8,
     sessions: 187,
     reviews: [
@@ -93,11 +89,11 @@ export const EXPERTS: Expert[] = [
     id: "otto",
     activity: "talking",
     name: "Balaji Srinivasan",
-    title: "Indie Hacker",
+    title: "Investor, ex-Coinbase CTO",
     sectionId: "coding",
     priceCredits: 3_000,
     color: "#c7d2fe",
-    bio: "Shipped 24 products solo. Ask about MVPs, launching, and getting first paying users.",
+    bio: "Network states, startup playbooks, and contrarian bets that aged well.",
     rating: 4.6,
     sessions: 95,
     reviews: [
@@ -109,11 +105,11 @@ export const EXPERTS: Expert[] = [
     id: "dr-amara",
     activity: "wandering",
     name: "Elon Musk",
-    title: "Surgeon, 30y experience",
+    title: "CEO, Tesla and SpaceX",
     sectionId: "science",
     priceCredits: 12_000,
     color: "#34d399",
-    bio: "Three decades in the operating room. How senior doctors make decisions under pressure.",
+    bio: "Rockets, cars, and first-principles thinking. Ask me about building impossible things on impossible deadlines.",
     rating: 5.0,
     sessions: 421,
     reviews: [
@@ -124,11 +120,11 @@ export const EXPERTS: Expert[] = [
     id: "felix",
     activity: "working",
     name: "Mark Zuckerberg",
-    title: "Physics PhD, Educator",
+    title: "CEO, Meta",
     sectionId: "science",
     priceCredits: 4_000,
     color: "#6ee7b7",
-    bio: "I make hard physics intuitive. Quantum, relativity, and how to actually study science.",
+    bio: "Built Facebook from a dorm room. Scaling products to billions, and the bets that did and did not pay off.",
     rating: 4.7,
     sessions: 230,
     reviews: [
@@ -139,11 +135,11 @@ export const EXPERTS: Expert[] = [
     id: "lin",
     activity: "resting",
     name: "Jensen Huang",
-    title: "Biotech Researcher",
+    title: "CEO, NVIDIA",
     sectionId: "science",
     priceCredits: 9_000,
     color: "#a7f3d0",
-    bio: "10 years in gene-therapy labs. Research methods, grant writing, lab career paths.",
+    bio: "Three decades betting the company on accelerated computing. GPUs, AI, and surviving near-death moments.",
     rating: 4.8,
     sessions: 76,
     reviews: [
@@ -155,11 +151,11 @@ export const EXPERTS: Expert[] = [
     id: "coach-d",
     activity: "wandering",
     name: "Stephen Curry",
-    title: "Pro Basketball Coach",
+    title: "4x NBA Champion",
     sectionId: "sport",
     priceCredits: 6_000,
     color: "#fbbf24",
-    bio: "20 years coaching pros. Training plans, game IQ, and building a winning mindset.",
+    bio: "Changed how basketball is played from beyond the arc. Preparation, confidence, and shooting through slumps.",
     rating: 4.9,
     sessions: 268,
     reviews: [
@@ -170,11 +166,11 @@ export const EXPERTS: Expert[] = [
     id: "sana",
     activity: "resting",
     name: "Cristiano Ronaldo",
-    title: "Olympic Sprinter",
+    title: "Football Legend",
     sectionId: "sport",
     priceCredits: 10_000,
     color: "#fcd34d",
-    bio: "Two Olympics, one medal. Sprint mechanics, recovery, and performing under pressure.",
+    bio: "Five Ballons d'Or and two decades at the top. Discipline, longevity, and outworking talent.",
     rating: 4.9,
     sessions: 154,
     reviews: [
@@ -185,11 +181,11 @@ export const EXPERTS: Expert[] = [
     id: "ben",
     activity: "working",
     name: "Jeremy Lin",
-    title: "S&C / Nutrition Coach",
+    title: "NBA Guard, Linsanity",
     sectionId: "sport",
     priceCredits: 4_000,
     color: "#fde68a",
-    bio: "Strength, conditioning and nutrition for everyday athletes. No fads, just what works.",
+    bio: "From undrafted to global phenomenon overnight. Resilience, faith, and seizing the one shot you get.",
     rating: 4.5,
     sessions: 112,
     reviews: [
