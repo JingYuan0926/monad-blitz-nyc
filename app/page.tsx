@@ -28,6 +28,8 @@ export default function Home() {
   const [selected, setSelected] = useState<Expert | null>(null);
   const [near, setNear] = useState<NearTarget | null>(null);
   const [vaultOpen, setVaultOpen] = useState(false);
+  const [playerBubble, setPlayerBubble] = useState<string | null>(null);
+  const [expertBubble, setExpertBubble] = useState<{ id: string; text: string } | null>(null);
   const [mockBalance, setMockBalance] = useState(5);
   const [topUpPending, setTopUpPending] = useState(false);
   const [memories, setMemories] = useState<MemoryEntry[]>([
@@ -119,12 +121,23 @@ export default function Home() {
 
   const panelOpen = !!selected || vaultOpen;
 
+  const clearBubbles = () => {
+    setPlayerBubble(null);
+    setExpertBubble(null);
+  };
+
+  const closeExpert = () => {
+    setSelected(null);
+    clearBubbles();
+  };
+
   // press E near an expert or the reception desk to interact
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         setSelected(null);
         setVaultOpen(false);
+        clearBubbles();
         return;
       }
       if (e.key.toLowerCase() === "e" && near && !panelOpen) {
@@ -141,26 +154,33 @@ export default function Home() {
       <OfficeScene
         selectedId={selected?.id ?? null}
         paused={panelOpen}
+        playerBubble={playerBubble}
+        expertBubble={expertBubble}
         onSelectExpert={(e) => {
           setSelected(e);
           if (e) setVaultOpen(false);
+          else clearBubbles();
         }}
         onNearChange={setNear}
       />
 
       {/* top HUD */}
-      <header className="pointer-events-none absolute left-4 top-4 flex flex-col gap-2">
+      <header className="pointer-events-none absolute left-4 top-4">
         <h1 className="text-xl font-bold text-slate-900 drop-shadow-[0_1px_2px_rgba(255,255,255,0.6)]">
           Memonads <span className="font-normal text-slate-700">· built on Monad</span>
         </h1>
-        <div className="pointer-events-auto flex w-fit items-center gap-2 rounded-xl border border-slate-700 bg-slate-900/90 px-3 py-2 text-sm text-slate-100">
+      </header>
+
+      {/* wallet + credits */}
+      <div className="pointer-events-auto absolute right-4 top-4 flex flex-col items-end gap-2">
+        <ConnectButton showBalance chainStatus="full" accountStatus="address" />
+        <div className="flex w-fit items-center gap-2 rounded-xl border border-slate-700 bg-slate-900/90 px-3 py-2 text-sm text-slate-100">
           <span className="text-violet-400 font-semibold">
-            ◆ {balance.toFixed(2)} MON
-            {isConnected && credits !== undefined && (
-              <span className="ml-1 font-normal text-slate-400">
-                · {credits.toLocaleString()} credits
-              </span>
-            )}
+            {(isConnected
+              ? Number(credits ?? BigInt(0))
+              : Math.round(mockBalance * CREDITS_PER_MON)
+            ).toLocaleString()}{" "}
+            credits
           </span>
           <button
             onClick={topUp}
@@ -170,11 +190,6 @@ export default function Home() {
             {topUpPending ? "Confirming…" : isConnected ? "+ Top up 1 MON" : "+ Top up"}
           </button>
         </div>
-      </header>
-
-      {/* wallet */}
-      <div className="pointer-events-auto absolute right-4 top-4">
-        <ConnectButton showBalance={false} chainStatus="icon" accountStatus="address" />
       </div>
 
       {/* talk / reception prompt */}
@@ -199,7 +214,11 @@ export default function Home() {
           expert={selected}
           balance={balance}
           onPay={pay}
-          onClose={() => setSelected(null)}
+          onBubble={(role, text) => {
+            if (role === "user") setPlayerBubble(text);
+            else setExpertBubble({ id: selected.id, text });
+          }}
+          onClose={closeExpert}
         />
       )}
       {vaultOpen && !selected && (

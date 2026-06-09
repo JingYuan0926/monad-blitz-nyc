@@ -170,6 +170,84 @@ function Label({
   );
 }
 
+/* ---- speech bubble (word-wrapped canvas sprite) ---- */
+
+function SpeechBubble({ text, position }: { text: string; position: [number, number, number] }) {
+  const { texture, aspect } = useMemo(() => {
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d")!;
+    const font = "500 40px 'Arial', sans-serif";
+    const maxWidth = 560;
+    const pad = 30;
+    const lineHeight = 52;
+    const tail = 22;
+
+    ctx.font = font;
+    const words = text.split(/\s+/);
+    const lines: string[] = [];
+    let cur = "";
+    for (const w of words) {
+      const trial = cur ? `${cur} ${w}` : w;
+      if (ctx.measureText(trial).width > maxWidth && cur) {
+        lines.push(cur);
+        cur = w;
+        if (lines.length === 5) {
+          cur += "…";
+          break;
+        }
+      } else {
+        cur = trial;
+      }
+    }
+    if (cur) lines.push(cur);
+
+    const widest = Math.max(...lines.map((l) => ctx.measureText(l).width));
+    canvas.width = Math.ceil(Math.min(maxWidth, widest)) + pad * 2;
+    canvas.height = lines.length * lineHeight + pad * 2 + tail;
+    ctx.font = font; // resizing resets the context
+
+    // rounded bubble + tail
+    const w = canvas.width;
+    const h = canvas.height - tail;
+    const r = 24;
+    ctx.fillStyle = "rgba(255, 255, 255, 0.96)";
+    ctx.beginPath();
+    ctx.moveTo(r, 0);
+    ctx.arcTo(w, 0, w, h, r);
+    ctx.arcTo(w, h, 0, h, r);
+    ctx.arcTo(0, h, 0, 0, r);
+    ctx.arcTo(0, 0, w, 0, r);
+    ctx.closePath();
+    ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(w / 2 - 18, h);
+    ctx.lineTo(w / 2, h + tail);
+    ctx.lineTo(w / 2 + 18, h);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.fillStyle = "#0f172a";
+    ctx.textAlign = "left";
+    ctx.textBaseline = "middle";
+    lines.forEach((l, i) => {
+      ctx.fillText(l, pad, pad + lineHeight * i + lineHeight / 2);
+    });
+
+    const tex = new CanvasTexture(canvas);
+    tex.colorSpace = SRGBColorSpace;
+    return { texture: tex, aspect: canvas.width / canvas.height };
+  }, [text]);
+
+  useEffect(() => () => texture.dispose(), [texture]);
+
+  const height = Math.min(1.3, 0.42 + (1 / aspect) * 1.1);
+  return (
+    <sprite position={position} scale={[height * aspect, height, 1]} renderOrder={10}>
+      <spriteMaterial map={texture} transparent depthWrite={false} depthTest={false} />
+    </sprite>
+  );
+}
+
 /* ================= Furniture & outdoor props ================= */
 
 function Desk({ position, rotation = 0 }: { position: [number, number, number]; rotation?: number }) {
@@ -909,12 +987,14 @@ function ExpertAvatar({
   expert,
   index,
   active,
+  bubbleText,
   onSelect,
   positionsRef,
 }: {
   expert: Expert;
   index: number;
   active: boolean;
+  bubbleText: string | null;
   onSelect: (e: Expert) => void;
   positionsRef: React.MutableRefObject<Record<string, { x: number; z: number }>>;
 }) {
@@ -1047,7 +1127,8 @@ function ExpertAvatar({
           color="#fbbf24"
         />
       )}
-      {bubble && <Label text={bubble} position={[0.32, 2.08, 0]} height={0.22} />}
+      {bubble && !bubbleText && <Label text={bubble} position={[0.32, 2.08, 0]} height={0.22} />}
+      {bubbleText && <SpeechBubble text={bubbleText} position={[0, 2.45, 0]} />}
     </group>
   );
 }
@@ -1056,11 +1137,13 @@ function ExpertAvatar({
 
 function Player({
   paused,
+  bubbleText,
   positionRef,
   expertPositionsRef,
   onNearChange,
 }: {
   paused: boolean;
+  bubbleText: string | null;
   positionRef: React.MutableRefObject<Vector3>;
   expertPositionsRef: React.MutableRefObject<Record<string, { x: number; z: number }>>;
   onNearChange: (t: NearTarget | null) => void;
@@ -1162,6 +1245,7 @@ function Player({
         outfit={{ shirt: "#e3445a", pants: "#1f2a44", hair: "#3b2a1d" }}
         movingRef={movingRef}
       />
+      {bubbleText && <SpeechBubble text={bubbleText} position={[0, 2.15, 0]} />}
       {/* marker ring */}
       <mesh position={[0, 0.02, 0]} rotation={[-Math.PI / 2, 0, 0]}>
         <ringGeometry args={[0.3, 0.4, 32]} />
@@ -1398,11 +1482,15 @@ function Grounds() {
 export default function OfficeScene({
   selectedId,
   paused,
+  playerBubble,
+  expertBubble,
   onSelectExpert,
   onNearChange,
 }: {
   selectedId: string | null;
   paused: boolean;
+  playerBubble: string | null;
+  expertBubble: { id: string; text: string } | null;
   onSelectExpert: (e: Expert | null) => void;
   onNearChange: (t: NearTarget | null) => void;
 }) {
@@ -1448,6 +1536,7 @@ export default function OfficeScene({
           expert={expert}
           index={i}
           active={selectedId === expert.id || nearExpertId === expert.id}
+          bubbleText={expertBubble?.id === expert.id ? expertBubble.text : null}
           onSelect={onSelectExpert}
           positionsRef={expertPositions}
         />
@@ -1455,6 +1544,7 @@ export default function OfficeScene({
 
       <Player
         paused={paused}
+        bubbleText={playerBubble}
         positionRef={playerPos}
         expertPositionsRef={expertPositions}
         onNearChange={(t) => {

@@ -27,11 +27,13 @@ export default function ExpertPanel({
   expert,
   balance,
   onPay,
+  onBubble,
   onClose,
 }: {
   expert: Expert;
   balance: number;
   onPay: (amount: number) => Promise<boolean>;
+  onBubble: (role: "user" | "expert", text: string) => void;
   onClose: () => void;
 }) {
   const [stage, setStage] = useState<"profile" | "paying" | "chat">("profile");
@@ -55,12 +57,9 @@ export default function ExpertPanel({
       return;
     }
     setStage("chat");
-    setMessages([
-      {
-        role: "expert",
-        text: `Hey, I'm ${expert.name}. You've unlocked a session with my memory vault — ask me anything about ${section?.name.toLowerCase()}.`,
-      },
-    ]);
+    const greeting = `Hey, I'm ${expert.name}. You've unlocked a session with my memory vault — ask me anything about ${section?.name.toLowerCase()}.`;
+    setMessages([{ role: "expert", text: greeting }]);
+    onBubble("expert", greeting);
   };
 
   const sendMessage = async () => {
@@ -69,6 +68,7 @@ export default function ExpertPanel({
     setInput("");
     const history = messages;
     setMessages((m) => [...m, { role: "user", text }]);
+    onBubble("user", text);
     setThinking(true);
     try {
       const persona = `You are ${expert.name}, ${expert.title}, an expert in ${section?.name.toLowerCase()} inside Memonads — a hotel of memory vaults where visitors pay to query an expert's experience. Bio: ${expert.bio} Answer in first person as this expert, drawing on your experience. Be practical and concise (2-4 sentences).`;
@@ -89,14 +89,11 @@ export default function ExpertPanel({
       const data = await res.json();
       if (!res.ok || typeof data.reply !== "string") throw new Error(data.error);
       setMessages((m) => [...m, { role: "expert", text: data.reply }]);
+      onBubble("expert", data.reply);
     } catch {
-      setMessages((m) => [
-        ...m,
-        {
-          role: "expert",
-          text: `(offline) Great question — in my experience, "${text.slice(0, 60)}" comes down to fundamentals. Set OPENAI_API_KEY in .env.local to get my real answers.`,
-        },
-      ]);
+      const fallback = `(offline) Great question — in my experience, "${text.slice(0, 60)}" comes down to fundamentals. Set OPENAI_API_KEY in .env.local to get my real answers.`;
+      setMessages((m) => [...m, { role: "expert", text: fallback }]);
+      onBubble("expert", fallback);
     } finally {
       setThinking(false);
     }
