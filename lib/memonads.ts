@@ -7,7 +7,7 @@
 import { keccak256, toHex } from "viem";
 
 export const MEMONADS_ADDRESS =
-  "0xee56569f648c26C8216877E5C47FA2578334D81B" as const;
+  "0x09513cAf4430C1D50cBaB00a637Db63E5810F844" as const;
 
 /** Price of one credit in wei. topUp() reverts unless msg.value is a positive multiple. */
 export const WEI_PER_CREDIT = BigInt("100000000000000"); // 1e14
