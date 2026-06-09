@@ -8,6 +8,8 @@ import { useAccount, usePublicClient, useReadContract, useWriteContract } from "
 import { monadTestnet } from "wagmi/chains";
 import { AI_QUERY_CREDITS_ADDRESS, aiQueryCreditsAbi } from "@/lib/aiQueryCredits";
 import ExpertPanel from "./components/ExpertPanel";
+import Low from "./components/Low";
+import SideBar from "./components/SideBar";
 import MemoryPanel, { type MemoryEntry } from "./components/MemoryPanel";
 import type { NearTarget } from "./components/OfficeScene";
 import type { Expert } from "./data/experts";
@@ -217,6 +219,24 @@ export default function Home() {
           onClose={closeExpert}
         />
       )}
+      {/* habbo-style left button rail */}
+      <SideBar
+        onExit={() => {
+          setSelected(null);
+          setVaultOpen(false);
+          clearBubbles();
+        }}
+      />
+
+      {/* habbo-style bottom bar with character chips */}
+      <Low
+        onSelect={(e) => {
+          setSelected(e);
+          setVaultOpen(false);
+          clearBubbles();
+        }}
+      />
+
       {vaultOpen && !selected && (
         <MemoryPanel
           memories={memories}
