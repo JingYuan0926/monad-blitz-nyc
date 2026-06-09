@@ -1,8 +1,8 @@
-# 🧠 Brain Hotel
+# Memonads
 
-Brain Hotel is a platform for human expertise — for people, for data, and even for AI agents. Experts upload their experience, memories, strategies, and lessons learned into an AI-powered vault, and both humans and AI agents can explore and query those memories through an interactive hotel-style interface.
+Memonads is a platform for human expertise — for people, for data, and even for AI agents. Experts upload their experience, memories, strategies, and lessons learned into an AI-powered vault, and both humans and AI agents can explore and query those memories through an interactive hotel-style interface.
 
-Instead of letting valuable knowledge disappear when someone retires, changes careers, or moves on, Brain Hotel turns human experience into searchable, living memory rooms — a knowledge layer that people can learn from and AI agents can plug into.
+Instead of letting valuable knowledge disappear when someone retires, changes careers, or moves on, Memonads turns human experience into searchable, living memory rooms — a knowledge layer that people can learn from and AI agents can plug into.
 
 ## 📖 Story
 
@@ -22,7 +22,7 @@ A doctor with 30 years of experience retires. A founder exits their company. A t
 
 Their experience is incredibly valuable, but most of it is never properly captured.
 
-Brain Hotel solves this by giving every expert a place to store their mind.
+Memonads solves this by giving every expert a place to store their mind.
 
 ## ❗ Problem
 
@@ -43,7 +43,7 @@ The result is a major knowledge gap between experienced people and beginners.
 
 ## 💡 Solution
 
-Brain Hotel is a platform where users can upload their knowledge, experience, notes, documents, videos, and stories. The platform automatically turns this content into a structured AI memory vault, similar to an Obsidian vault.
+Memonads is a platform where users can upload their knowledge, experience, notes, documents, videos, and stories. The platform automatically turns this content into a structured AI memory vault, similar to an Obsidian vault.
 
 Once the vault is created, other users can visit the platform and query that person's memory.
 
@@ -71,7 +71,7 @@ If users want to learn from Jason, they go to Level 2 and enter Jason's room.
 
 ## 🏨 Product Concept
 
-Brain Hotel makes knowledge feel explorable.
+Memonads makes knowledge feel explorable.
 
 Instead of a boring search bar, users move through a pixel-art hotel where each room contains a different person's mind.
 
