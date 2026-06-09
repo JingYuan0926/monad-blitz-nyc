@@ -229,7 +229,7 @@ function CreditsPanel() {
       <ActionRow
         label="Top Up"
         unit="MON"
-        defaultValue="0.001"
+        defaultValue="0.1"
         step="0.0001"
         disabled={!isConnected}
         prepare={prepareTopUp}
