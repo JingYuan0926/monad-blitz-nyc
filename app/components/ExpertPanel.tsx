@@ -44,6 +44,8 @@ export default function ExpertPanel({
   const [reviews, setReviews] = useState<Review[]>(expert.reviews);
   const [myRating, setMyRating] = useState(5);
   const [myReview, setMyReview] = useState("");
+  const [reviewOpen, setReviewOpen] = useState(false);
+  const [justPosted, setJustPosted] = useState(false);
 
   const section = SECTIONS.find((s) => s.id === expert.sectionId);
 
@@ -103,6 +105,9 @@ export default function ExpertPanel({
     if (!myReview.trim()) return;
     setReviews((r) => [{ author: "you", rating: myRating, text: myReview.trim() }, ...r]);
     setMyReview("");
+    setReviewOpen(false);
+    setJustPosted(true);
+    setTimeout(() => setJustPosted(false), 2000);
   };
 
   return (
@@ -123,6 +128,19 @@ export default function ExpertPanel({
             </span>
           </p>
         </div>
+        {stage === "chat" && (
+          <button
+            onClick={() => setReviewOpen((o) => !o)}
+            className={`shrink-0 rounded-full border px-2.5 py-1 text-xs cursor-pointer transition-colors ${
+              reviewOpen
+                ? "border-amber-400 text-amber-300 bg-amber-400/10"
+                : "border-slate-600 text-slate-300 hover:border-amber-400 hover:text-amber-300"
+            }`}
+            aria-label="Leave a review"
+          >
+            ★ Review
+          </button>
+        )}
         <button
           onClick={onClose}
           className="text-slate-400 hover:text-white text-xl leading-none cursor-pointer"
@@ -131,6 +149,38 @@ export default function ExpertPanel({
           ✕
         </button>
       </div>
+
+      {/* review popover (anchored under the header, out of the chat flow) */}
+      {reviewOpen && stage === "chat" && (
+        <div className="absolute right-3 top-[84px] z-20 w-72 rounded-xl border border-slate-600 bg-slate-800 p-3 shadow-2xl space-y-2">
+          <p className="flex items-center justify-between text-xs font-semibold text-slate-300">
+            Rate this session
+            <Stars value={myRating} onChange={setMyRating} />
+          </p>
+          <div className="flex gap-2">
+            <input
+              value={myReview}
+              onChange={(e) => setMyReview(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && submitReview()}
+              placeholder="How was the session?"
+              autoFocus
+              className="flex-1 rounded-md bg-slate-900 border border-slate-700 px-2 py-1.5 text-sm outline-none focus:border-amber-400"
+            />
+            <button
+              onClick={submitReview}
+              disabled={!myReview.trim()}
+              className="rounded-md bg-amber-500 hover:bg-amber-400 disabled:opacity-40 px-3 text-sm font-semibold text-slate-900 cursor-pointer"
+            >
+              Post
+            </button>
+          </div>
+        </div>
+      )}
+      {justPosted && (
+        <p className="absolute left-1/2 top-[88px] z-20 -translate-x-1/2 rounded-full bg-emerald-500/90 px-3 py-1 text-xs font-semibold text-white shadow">
+          Review posted ✓
+        </p>
+      )}
 
       {/* body */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
@@ -204,28 +254,6 @@ export default function ExpertPanel({
               )}
             </div>
 
-            <div className="rounded-lg bg-slate-800 p-3 space-y-2">
-              <p className="text-xs font-semibold text-slate-400">Leave a review</p>
-              <Stars value={myRating} onChange={setMyRating} />
-              <div className="flex gap-2">
-                <input
-                  value={myReview}
-                  onChange={(e) => setMyReview(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && submitReview()}
-                  placeholder="How was the session?"
-                  className="flex-1 rounded-md bg-slate-900 border border-slate-700 px-2 py-1.5 text-sm outline-none focus:border-violet-500"
-                />
-                <button
-                  onClick={submitReview}
-                  className="rounded-md bg-slate-700 hover:bg-slate-600 px-3 text-sm cursor-pointer"
-                >
-                  Post
-                </button>
-              </div>
-              {reviews.some((r) => r.author === "you") && (
-                <p className="text-xs text-emerald-400">Review posted ✓</p>
-              )}
-            </div>
           </>
         )}
       </div>
