@@ -26,13 +26,18 @@ function Stars({ value, onChange }: { value: number; onChange?: (v: number) => v
 export default function ExpertPanel({
   expert,
   balance,
+  extraReviews,
   onPay,
+  onReview,
   onBubble,
   onClose,
 }: {
   expert: Expert;
   balance: number;
+  /** reviews recorded on-chain for this expert */
+  extraReviews: Review[];
   onPay: (amount: number) => Promise<boolean>;
+  onReview: (rating: number, text: string) => Promise<"chain" | "local" | false>;
   onBubble: (role: "user" | "expert", text: string) => void;
   onClose: () => void;
 }) {
@@ -41,11 +46,14 @@ export default function ExpertPanel({
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [thinking, setThinking] = useState(false);
   const [input, setInput] = useState("");
-  const [reviews, setReviews] = useState<Review[]>(expert.reviews);
+  const [localReviews, setLocalReviews] = useState<Review[]>([]);
   const [myRating, setMyRating] = useState(5);
   const [myReview, setMyReview] = useState("");
   const [reviewOpen, setReviewOpen] = useState(false);
+  const [posting, setPosting] = useState(false);
   const [justPosted, setJustPosted] = useState(false);
+
+  const reviews = [...localReviews, ...extraReviews, ...expert.reviews];
 
   const section = SECTIONS.find((s) => s.id === expert.sectionId);
 
@@ -101,9 +109,15 @@ export default function ExpertPanel({
     }
   };
 
-  const submitReview = () => {
-    if (!myReview.trim()) return;
-    setReviews((r) => [{ author: "you", rating: myRating, text: myReview.trim() }, ...r]);
+  const submitReview = async () => {
+    const text = myReview.trim();
+    if (!text || posting) return;
+    setPosting(true);
+    const mode = await onReview(myRating, text);
+    setPosting(false);
+    if (!mode) return; // tx rejected/failed — keep the popover open to retry
+    // on-chain posts appear via the refetched extraReviews; only demo mode is local
+    if (mode === "local") setLocalReviews((r) => [{ author: "you", rating: myRating, text }, ...r]);
     setMyReview("");
     setReviewOpen(false);
     setJustPosted(true);
@@ -168,10 +182,10 @@ export default function ExpertPanel({
             />
             <button
               onClick={submitReview}
-              disabled={!myReview.trim()}
+              disabled={!myReview.trim() || posting}
               className="rounded-md bg-amber-500 hover:bg-amber-400 disabled:opacity-40 px-3 text-sm font-semibold text-slate-900 cursor-pointer"
             >
-              Post
+              {posting ? "…" : "Post"}
             </button>
           </div>
         </div>

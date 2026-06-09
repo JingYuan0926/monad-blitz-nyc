@@ -6,11 +6,11 @@ import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { parseEther } from "viem";
 import { useAccount, usePublicClient, useReadContract, useWriteContract } from "wagmi";
 import { monadTestnet } from "wagmi/chains";
-import { AI_QUERY_CREDITS_ADDRESS, aiQueryCreditsAbi } from "@/lib/aiQueryCredits";
+import { MEMONADS_ADDRESS, memonadsAbi, expertAddress } from "@/lib/memonads";
 import ExpertPanel from "./components/ExpertPanel";
 import MemoryPanel, { type MemoryEntry } from "./components/MemoryPanel";
 import type { NearTarget } from "./components/OfficeScene";
-import type { Expert } from "./data/experts";
+import type { Expert, Review } from "./data/experts";
 
 const OfficeScene = dynamic(() => import("./components/OfficeScene"), {
   ssr: false,
@@ -24,6 +24,10 @@ const OfficeScene = dynamic(() => import("./components/OfficeScene"), {
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000" as const;
 const CREDITS_PER_MON = 10_000;
 
+function shortAddress(addr: string) {
+  return `${addr.slice(0, 6)}…${addr.slice(-4)}`;
+}
+
 export default function Home() {
   const [selected, setSelected] = useState<Expert | null>(null);
   const [near, setNear] = useState<NearTarget | null>(null);
@@ -32,7 +36,7 @@ export default function Home() {
   const [expertBubble, setExpertBubble] = useState<{ id: string; text: string } | null>(null);
   const [mockCredits, setMockCredits] = useState(50_000);
   const [topUpPending, setTopUpPending] = useState(false);
-  const [memories, setMemories] = useState<MemoryEntry[]>([
+  const [localMemories, setLocalMemories] = useState<MemoryEntry[]>([
     {
       id: 1,
       sectionId: "coding",
@@ -53,36 +57,75 @@ export default function Home() {
     },
   ]);
 
-  // --- on-chain credits (AIQueryCredits on Monad Testnet) ---
+  // --- Memonads contract (Monad Testnet): credits, profile, memories, reviews ---
   const { address, isConnected } = useAccount();
   const publicClient = usePublicClient({ chainId: monadTestnet.id });
   const { writeContractAsync } = useWriteContract();
+
   const { data: credits, refetch: refetchCredits } = useReadContract({
-    address: AI_QUERY_CREDITS_ADDRESS,
-    abi: aiQueryCreditsAbi,
+    address: MEMONADS_ADDRESS,
+    abi: memonadsAbi,
     functionName: "credits",
     args: [address ?? ZERO_ADDRESS],
     chainId: monadTestnet.id,
     query: { enabled: Boolean(address), refetchInterval: 4_000 },
   });
 
-  const balanceCredits = isConnected
-    ? Number(credits ?? BigInt(0))
-    : mockCredits;
+  const { data: profile, refetch: refetchProfile } = useReadContract({
+    address: MEMONADS_ADDRESS,
+    abi: memonadsAbi,
+    functionName: "profiles",
+    args: [address ?? ZERO_ADDRESS],
+    chainId: monadTestnet.id,
+    query: { enabled: Boolean(address) },
+  });
+  const registered = Boolean(profile?.[2]);
 
+  const { data: chainMemories, refetch: refetchMemories } = useReadContract({
+    address: MEMONADS_ADDRESS,
+    abi: memonadsAbi,
+    functionName: "getMemories",
+    args: [address ?? ZERO_ADDRESS],
+    chainId: monadTestnet.id,
+    query: { enabled: Boolean(address) },
+  });
+
+  const selectedExpertAddr = selected ? expertAddress(selected.id) : ZERO_ADDRESS;
+  const { data: chainReviews, refetch: refetchReviews } = useReadContract({
+    address: MEMONADS_ADDRESS,
+    abi: memonadsAbi,
+    functionName: "getReviews",
+    args: [selectedExpertAddr],
+    chainId: monadTestnet.id,
+    query: { enabled: Boolean(selected) && isConnected },
+  });
+
+  const balanceCredits = isConnected ? Number(credits ?? BigInt(0)) : mockCredits;
+
+  const writeAndWait = async (
+    functionName: "register" | "addMemory" | "deleteMemory" | "topUp" | "paySession" | "review",
+    args: readonly unknown[],
+    value?: bigint
+  ) => {
+    const hash = await writeContractAsync({
+      abi: memonadsAbi,
+      address: MEMONADS_ADDRESS,
+      chainId: monadTestnet.id,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      functionName: functionName as any,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      args: args as any,
+      value,
+    });
+    await publicClient?.waitForTransactionReceipt({ hash });
+  };
+
+  // pay for a session with the currently open expert
   const pay = async (amountCredits: number): Promise<boolean> => {
     if (isConnected) {
-      const needed = BigInt(amountCredits);
-      if ((credits ?? BigInt(0)) < needed) return false;
+      if (!selected || (credits ?? BigInt(0)) < BigInt(amountCredits)) return false;
       try {
-        const hash = await writeContractAsync({
-          abi: aiQueryCreditsAbi,
-          address: AI_QUERY_CREDITS_ADDRESS,
-          chainId: monadTestnet.id,
-          functionName: "consume",
-          args: [needed],
-        });
-        await publicClient?.waitForTransactionReceipt({ hash });
+        await writeAndWait("paySession", [expertAddress(selected.id), BigInt(amountCredits)]);
         refetchCredits();
         return true;
       } catch {
@@ -96,6 +139,17 @@ export default function Home() {
     return true;
   };
 
+  const postReview = async (rating: number, text: string): Promise<"chain" | "local" | false> => {
+    if (!isConnected || !selected) return "local"; // demo mode: local only
+    try {
+      await writeAndWait("review", [expertAddress(selected.id), rating, text]);
+      refetchReviews();
+      return "chain";
+    } catch {
+      return false;
+    }
+  };
+
   const topUp = async () => {
     if (!isConnected) {
       setMockCredits((b) => b + CREDITS_PER_MON);
@@ -103,14 +157,7 @@ export default function Home() {
     }
     setTopUpPending(true);
     try {
-      const hash = await writeContractAsync({
-        abi: aiQueryCreditsAbi,
-        address: AI_QUERY_CREDITS_ADDRESS,
-        chainId: monadTestnet.id,
-        functionName: "topUp",
-        value: parseEther("1"),
-      });
-      await publicClient?.waitForTransactionReceipt({ hash });
+      await writeAndWait("topUp", [], parseEther("1"));
       refetchCredits();
     } catch {
       // user rejected or tx failed — badge simply keeps the old balance
@@ -118,6 +165,60 @@ export default function Home() {
       setTopUpPending(false);
     }
   };
+
+  // --- memory vault (reception) ---
+  const memories: MemoryEntry[] = isConnected
+    ? (chainMemories ?? []).map((m, i) => ({
+        id: i,
+        sectionId: m.section,
+        title: m.title,
+        text: m.content,
+      }))
+    : localMemories;
+
+  const addMemory = async (
+    m: Omit<MemoryEntry, "id">,
+    name?: string
+  ): Promise<boolean> => {
+    if (!isConnected) {
+      setLocalMemories((list) => [{ ...m, id: Date.now() }, ...list]);
+      return true;
+    }
+    try {
+      if (!registered) {
+        if (!name?.trim()) return false;
+        await writeAndWait("register", [name.trim()]);
+        refetchProfile();
+      }
+      await writeAndWait("addMemory", [m.sectionId, m.title, m.text]);
+      refetchMemories();
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
+  const deleteMemory = async (id: number) => {
+    if (!isConnected) {
+      setLocalMemories((list) => list.filter((m) => m.id !== id));
+      return;
+    }
+    try {
+      await writeAndWait("deleteMemory", [BigInt(id)]);
+      refetchMemories();
+    } catch {
+      // tx rejected — list stays as-is
+    }
+  };
+
+  // reviews recorded on-chain for the open expert, newest first
+  const onChainReviews: Review[] = isConnected
+    ? [...(chainReviews ?? [])].reverse().map((r) => ({
+        author: shortAddress(r.reviewer),
+        rating: Number(r.rating),
+        text: r.text,
+      }))
+    : [];
 
   const panelOpen = !!selected || vaultOpen;
 
@@ -209,7 +310,9 @@ export default function Home() {
           key={selected.id}
           expert={selected}
           balance={balanceCredits}
+          extraReviews={onChainReviews}
           onPay={pay}
+          onReview={postReview}
           onBubble={(role, text) => {
             if (role === "user") setPlayerBubble(text);
             else setExpertBubble({ id: selected.id, text });
@@ -220,8 +323,9 @@ export default function Home() {
       {vaultOpen && !selected && (
         <MemoryPanel
           memories={memories}
-          onAdd={(m) => setMemories((list) => [{ ...m, id: Date.now() }, ...list])}
-          onDelete={(id) => setMemories((list) => list.filter((m) => m.id !== id))}
+          needsName={isConnected && !registered}
+          onAdd={addMemory}
+          onDelete={deleteMemory}
           onClose={() => setVaultOpen(false)}
         />
       )}

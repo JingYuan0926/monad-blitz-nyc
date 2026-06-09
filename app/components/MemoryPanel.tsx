@@ -12,33 +12,46 @@ export type MemoryEntry = {
 
 export default function MemoryPanel({
   memories,
+  needsName,
   onAdd,
   onDelete,
   onClose,
 }: {
   memories: MemoryEntry[];
-  onAdd: (m: Omit<MemoryEntry, "id">) => void;
-  onDelete: (id: number) => void;
+  /** wallet connected but no profile registered yet — ask for a name */
+  needsName: boolean;
+  onAdd: (m: Omit<MemoryEntry, "id">, name?: string) => Promise<boolean>;
+  onDelete: (id: number) => void | Promise<void>;
   onClose: () => void;
 }) {
   const [sectionId, setSectionId] = useState(SECTIONS[0].id);
+  const [name, setName] = useState("");
   const [title, setTitle] = useState("");
   const [text, setText] = useState("");
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [failed, setFailed] = useState(false);
 
-  const save = () => {
-    if (!title.trim() || !text.trim() || saving) return;
+  const canSave =
+    title.trim() && text.trim() && !saving && (!needsName || name.trim());
+
+  const save = async () => {
+    if (!canSave) return;
     setSaving(true);
-    // UI-only: simulate writing to the vault
-    setTimeout(() => {
-      onAdd({ sectionId, title: title.trim(), text: text.trim() });
-      setTitle("");
-      setText("");
-      setSaving(false);
-      setSaved(true);
-      setTimeout(() => setSaved(false), 2000);
-    }, 900);
+    setFailed(false);
+    const ok = await onAdd(
+      { sectionId, title: title.trim(), text: text.trim() },
+      needsName ? name.trim() : undefined
+    );
+    setSaving(false);
+    if (!ok) {
+      setFailed(true);
+      return;
+    }
+    setTitle("");
+    setText("");
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2000);
   };
 
   const sectionOf = (id: string) => SECTIONS.find((s) => s.id === id);
@@ -73,6 +86,14 @@ export default function MemoryPanel({
 
         {/* add form */}
         <div className="rounded-xl bg-slate-800 p-3 space-y-2">
+          {needsName && (
+            <input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Your name — registered on-chain on first check-in"
+              className="font-body w-full rounded-md bg-slate-900 border border-violet-600 px-2 py-1.5 text-sm outline-none focus:border-violet-400"
+            />
+          )}
           <select
             value={sectionId}
             onChange={(e) => setSectionId(e.target.value)}
@@ -99,12 +120,17 @@ export default function MemoryPanel({
           />
           <button
             onClick={save}
-            disabled={!title.trim() || !text.trim() || saving}
+            disabled={!canSave}
             className="w-full rounded-lg bg-violet-600 hover:bg-violet-500 disabled:opacity-40 disabled:cursor-not-allowed py-2 text-sm font-semibold transition-colors cursor-pointer"
           >
             {saving ? "Saving to vault…" : "Save memory"}
           </button>
           {saved && <p className="text-xs text-emerald-400 text-center">Memory saved ✓</p>}
+          {failed && (
+            <p className="text-xs text-red-400 text-center">
+              Couldn&apos;t save — transaction rejected or failed. Try again.
+            </p>
+          )}
         </div>
 
         {/* entries */}
@@ -120,7 +146,7 @@ export default function MemoryPanel({
                 <li key={m.id} className="rounded-lg bg-slate-800 p-3 text-sm">
                   <p className="flex items-center justify-between gap-2">
                     <span className="font-medium text-slate-200 truncate">
-                      {sectionOf(m.sectionId)?.emoji} {m.title}
+                      {sectionOf(m.sectionId)?.emoji ?? "📝"} {m.title}
                     </span>
                     <button
                       onClick={() => onDelete(m.id)}
