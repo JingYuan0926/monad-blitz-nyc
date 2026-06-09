@@ -1,11 +1,5 @@
 {
-  "model": "claude-fable-5",
-  "enableWorkflows": true,
-  "effortLevel": "xhigh",
-  "ultracode": true,
-  "skipDangerousModePermissionPrompt": true,
   "permissions": {
-    "defaultMode": "bypassPermissions",
     "allow": [
       "Read",
       "Edit",
@@ -45,7 +39,12 @@
       "Bash(mkdir:)",
       "Bash(touch:)",
       "Bash(mv:)",
-      "Bash(cp:)"
+      "Bash(cp:)",
+      "WebSearch",
+      "WebFetch(domain:ethglobal.com)",
+      "WebFetch(domain:tradersunion.com)",
+      "WebFetch(domain:beincrypto.com)",
+      "WebFetch(domain:balajis.com)"
     ],
     "deny": [
       "Bash(rm -rf /:)",
@@ -63,6 +62,12 @@
       "Read(.//id_rsa)",
       "Read(~/.ssh/)",
       "Read(~/.aws/**)"
-    ]
-  }
+    ],
+    "defaultMode": "bypassPermissions"
+  },
+  "model": "claude-fable-5",
+  "enableWorkflows": true,
+  "effortLevel": "xhigh",
+  "ultracode": true,
+  "skipDangerousModePermissionPrompt": true
 }
