@@ -224,7 +224,7 @@ export default function MemoryPanel({
             )}
             {people.length === 0 ? (
               <p className="font-body text-sm text-slate-500">
-                You haven&apos;t submitted anyone yet — use the Spawn people tab first.
+                You haven&apos;t submitted anyone yet — use the Move in tab first.
                 Their memories will live inside them.
               </p>
             ) : (
