@@ -50,7 +50,7 @@ export default function ExpertPanel({
   const handlePay = async () => {
     setPayError(false);
     setStage("paying");
-    const ok = await onPay(expert.pricePerSession);
+    const ok = await onPay(expert.priceCredits);
     if (!ok) {
       setPayError(true);
       setStage("profile");
@@ -140,13 +140,13 @@ export default function ExpertPanel({
 
             <button
               onClick={handlePay}
-              disabled={balance < expert.pricePerSession}
+              disabled={balance < expert.priceCredits}
               className="w-full rounded-xl bg-violet-600 hover:bg-violet-500 disabled:opacity-40 disabled:cursor-not-allowed py-3 font-semibold transition-colors cursor-pointer"
             >
-              Pay {expert.pricePerSession} MON · Start Talking
+              Pay {expert.priceCredits.toLocaleString()} credits · Start Talking
             </button>
-            {balance < expert.pricePerSession && (
-              <p className="text-xs text-red-400 text-center">Not enough MON — top up your balance.</p>
+            {balance < expert.priceCredits && (
+              <p className="text-xs text-red-400 text-center">Not enough credits — top up your balance.</p>
             )}
             {payError && (
               <p className="text-xs text-red-400 text-center">
@@ -177,7 +177,7 @@ export default function ExpertPanel({
           <div className="flex flex-col items-center justify-center gap-3 py-16 text-center">
             <div className="h-10 w-10 animate-spin rounded-full border-4 border-violet-500 border-t-transparent" />
             <p className="text-sm text-slate-300">
-              Confirming payment of {expert.pricePerSession} MON on Monad…
+              Confirming payment of {expert.priceCredits.toLocaleString()} credits on Monad…
             </p>
           </div>
         )}

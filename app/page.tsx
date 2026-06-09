@@ -30,7 +30,7 @@ export default function Home() {
   const [vaultOpen, setVaultOpen] = useState(false);
   const [playerBubble, setPlayerBubble] = useState<string | null>(null);
   const [expertBubble, setExpertBubble] = useState<{ id: string; text: string } | null>(null);
-  const [mockBalance, setMockBalance] = useState(5);
+  const [mockCredits, setMockCredits] = useState(50_000);
   const [topUpPending, setTopUpPending] = useState(false);
   const [memories, setMemories] = useState<MemoryEntry[]>([
     {
@@ -66,13 +66,13 @@ export default function Home() {
     query: { enabled: Boolean(address), refetchInterval: 4_000 },
   });
 
-  const balance = isConnected
-    ? Number(credits ?? BigInt(0)) / CREDITS_PER_MON
-    : mockBalance;
+  const balanceCredits = isConnected
+    ? Number(credits ?? BigInt(0))
+    : mockCredits;
 
-  const pay = async (amountMon: number): Promise<boolean> => {
+  const pay = async (amountCredits: number): Promise<boolean> => {
     if (isConnected) {
-      const needed = BigInt(Math.round(amountMon * CREDITS_PER_MON));
+      const needed = BigInt(amountCredits);
       if ((credits ?? BigInt(0)) < needed) return false;
       try {
         const hash = await writeContractAsync({
@@ -90,15 +90,15 @@ export default function Home() {
       }
     }
     // demo mode (no wallet): simulated confirmation
-    if (mockBalance < amountMon) return false;
+    if (mockCredits < amountCredits) return false;
     await new Promise((r) => setTimeout(r, 1200));
-    setMockBalance((b) => +(b - amountMon).toFixed(2));
+    setMockCredits((b) => b - amountCredits);
     return true;
   };
 
   const topUp = async () => {
     if (!isConnected) {
-      setMockBalance((b) => +(b + 1).toFixed(2));
+      setMockCredits((b) => b + CREDITS_PER_MON);
       return;
     }
     setTopUpPending(true);
@@ -176,11 +176,7 @@ export default function Home() {
         <ConnectButton showBalance chainStatus="full" accountStatus="address" />
         <div className="flex w-fit items-center gap-2 rounded-xl border border-slate-700 bg-slate-900/90 px-3 py-2 text-sm text-slate-100">
           <span className="text-violet-400 font-semibold">
-            {(isConnected
-              ? Number(credits ?? BigInt(0))
-              : Math.round(mockBalance * CREDITS_PER_MON)
-            ).toLocaleString()}{" "}
-            credits
+            {balanceCredits.toLocaleString()} credits
           </span>
           <button
             onClick={topUp}
@@ -212,7 +208,7 @@ export default function Home() {
         <ExpertPanel
           key={selected.id}
           expert={selected}
-          balance={balance}
+          balance={balanceCredits}
           onPay={pay}
           onBubble={(role, text) => {
             if (role === "user") setPlayerBubble(text);

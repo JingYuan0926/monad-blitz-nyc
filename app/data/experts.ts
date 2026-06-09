@@ -12,7 +12,7 @@ export type Expert = {
   title: string;
   sectionId: string;
   activity: Activity;
-  pricePerSession: number; // MON
+  priceCredits: number; // credits (10,000 = 1 MON)
   color: string; // avatar shirt color
   bio: string;
   rating: number;
@@ -32,8 +32,8 @@ export type Section = {
 export const SECTIONS: Section[] = [
   {
     id: "coding",
-    name: "Coding",
-    emoji: "💻",
+    name: "Blockchain",
+    emoji: "⛓️",
     color: "#6366f1",
     floorColor: "#46519e",
     position: [-10, 0, -4],
@@ -64,7 +64,7 @@ export const EXPERTS: Expert[] = [
     name: "Jason Lee",
     title: "40x Hackathon Winner",
     sectionId: "coding",
-    pricePerSession: 0.5,
+    priceCredits: 5_000,
     color: "#818cf8",
     bio: "Won 40+ hackathons in 3 years. Ask me how to pick ideas, build fast, and pitch to win.",
     rating: 4.9,
@@ -80,7 +80,7 @@ export const EXPERTS: Expert[] = [
     name: "Mira Chen",
     title: "Staff Engineer, 15y",
     sectionId: "coding",
-    pricePerSession: 0.8,
+    priceCredits: 8_000,
     color: "#a5b4fc",
     bio: "15 years scaling backend systems. Architecture reviews, career advice, debugging war stories.",
     rating: 4.8,
@@ -95,7 +95,7 @@ export const EXPERTS: Expert[] = [
     name: "Otto Reyes",
     title: "Indie Hacker",
     sectionId: "coding",
-    pricePerSession: 0.3,
+    priceCredits: 3_000,
     color: "#c7d2fe",
     bio: "Shipped 24 products solo. Ask about MVPs, launching, and getting first paying users.",
     rating: 4.6,
@@ -111,7 +111,7 @@ export const EXPERTS: Expert[] = [
     name: "Dr. Amara Osei",
     title: "Surgeon, 30y experience",
     sectionId: "science",
-    pricePerSession: 1.2,
+    priceCredits: 12_000,
     color: "#34d399",
     bio: "Three decades in the operating room. How senior doctors make decisions under pressure.",
     rating: 5.0,
@@ -126,7 +126,7 @@ export const EXPERTS: Expert[] = [
     name: "Felix Norden",
     title: "Physics PhD, Educator",
     sectionId: "science",
-    pricePerSession: 0.4,
+    priceCredits: 4_000,
     color: "#6ee7b7",
     bio: "I make hard physics intuitive. Quantum, relativity, and how to actually study science.",
     rating: 4.7,
@@ -141,7 +141,7 @@ export const EXPERTS: Expert[] = [
     name: "Lin Zhao",
     title: "Biotech Researcher",
     sectionId: "science",
-    pricePerSession: 0.9,
+    priceCredits: 9_000,
     color: "#a7f3d0",
     bio: "10 years in gene-therapy labs. Research methods, grant writing, lab career paths.",
     rating: 4.8,
@@ -157,7 +157,7 @@ export const EXPERTS: Expert[] = [
     name: "Coach Darius",
     title: "Pro Basketball Coach",
     sectionId: "sport",
-    pricePerSession: 0.6,
+    priceCredits: 6_000,
     color: "#fbbf24",
     bio: "20 years coaching pros. Training plans, game IQ, and building a winning mindset.",
     rating: 4.9,
@@ -172,7 +172,7 @@ export const EXPERTS: Expert[] = [
     name: "Sana Iqbal",
     title: "Olympic Sprinter",
     sectionId: "sport",
-    pricePerSession: 1.0,
+    priceCredits: 10_000,
     color: "#fcd34d",
     bio: "Two Olympics, one medal. Sprint mechanics, recovery, and performing under pressure.",
     rating: 4.9,
@@ -187,7 +187,7 @@ export const EXPERTS: Expert[] = [
     name: "Ben Carter",
     title: "S&C / Nutrition Coach",
     sectionId: "sport",
-    pricePerSession: 0.4,
+    priceCredits: 4_000,
     color: "#fde68a",
     bio: "Strength, conditioning and nutrition for everyday athletes. No fads, just what works.",
     rating: 4.5,

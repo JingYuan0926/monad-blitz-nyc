@@ -143,7 +143,7 @@ function Label({
   const { texture, aspect } = useMemo(() => {
     const canvas = document.createElement("canvas");
     const ctx = canvas.getContext("2d")!;
-    const font = "bold 72px 'Arial', sans-serif";
+    const font = "bold 72px 'Pixelify Sans', 'Arial', sans-serif";
     ctx.font = font;
     const pad = 24;
     canvas.width = Math.ceil(ctx.measureText(text).width) + pad * 2;
@@ -176,7 +176,7 @@ function SpeechBubble({ text, position }: { text: string; position: [number, num
   const { texture, aspect } = useMemo(() => {
     const canvas = document.createElement("canvas");
     const ctx = canvas.getContext("2d")!;
-    const font = "500 40px 'Arial', sans-serif";
+    const font = "500 40px 'Pixelify Sans', 'Arial', sans-serif";
     const maxWidth = 560;
     const pad = 30;
     const lineHeight = 52;
@@ -1121,7 +1121,7 @@ function ExpertAvatar({
       />
       {lit && (
         <Label
-          text={`${expert.pricePerSession} MON · ★ ${expert.rating}`}
+          text={`${expert.priceCredits.toLocaleString()} credits · ★ ${expert.rating}`}
           position={[0, 1.63, 0]}
           height={0.17}
           color="#fbbf24"
@@ -1497,9 +1497,25 @@ export default function OfficeScene({
   const playerPos = useRef(new Vector3(0, 0, 13));
   const expertPositions = useRef<Record<string, { x: number; z: number }>>({});
   const [near, setNear] = useState<NearTarget | null>(null);
+  // labels are drawn to canvas textures once, so wait for the pixel font first
+  const [fontsReady, setFontsReady] = useState(false);
+  useEffect(() => {
+    let alive = true;
+    Promise.race([
+      document.fonts.load("bold 72px 'Pixelify Sans'"),
+      new Promise((r) => setTimeout(r, 1500)),
+    ]).then(() => {
+      if (alive) setFontsReady(true);
+    });
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   const nearExpertId = near?.kind === "expert" ? near.expert.id : null;
   const nearVault = near?.kind === "vault";
+
+  if (!fontsReady) return null;
 
   return (
     <Canvas
