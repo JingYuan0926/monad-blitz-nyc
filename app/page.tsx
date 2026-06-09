@@ -8,7 +8,10 @@ import { useAccount, usePublicClient, useReadContract, useWriteContract } from "
 import { monadTestnet } from "wagmi/chains";
 import { MEMONADS_ADDRESS, memonadsAbi, expertAddress } from "@/lib/memonads";
 import ExpertPanel from "./components/ExpertPanel";
+import Low from "./components/Low";
+import SideBar from "./components/SideBar";
 import MemoryPanel, { type MemoryEntry, type NewExpert } from "./components/MemoryPanel";
+import NewsFeed from "./components/NewsFeed";
 import type { NearTarget } from "./components/OfficeScene";
 import { EXPERTS, SECTIONS, type Expert, type Review } from "./data/experts";
 

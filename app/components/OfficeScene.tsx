@@ -97,7 +97,7 @@ function deskX(cx: number, i: number) {
   return cx + (i - 1) * 3;
 }
 
-const BEHAVIORS: Record<string, Behavior> = (() => {
+const STATIC_BEHAVIORS: Record<string, Behavior> = (() => {
   const map: Record<string, Behavior> = {};
   for (const section of SECTIONS) {
     const [cx] = section.position;
@@ -1094,6 +1094,7 @@ const WORK_BUBBLE: Record<string, string> = {
 
 function ExpertAvatar({
   expert,
+  behavior,
   index,
   active,
   bubbleText,
@@ -1101,13 +1102,13 @@ function ExpertAvatar({
   positionsRef,
 }: {
   expert: Expert;
+  behavior: Behavior;
   index: number;
   active: boolean;
   bubbleText: string | null;
   onSelect: (e: Expert) => void;
   positionsRef: React.MutableRefObject<Record<string, { x: number; z: number }>>;
 }) {
-  const behavior = BEHAVIORS[expert.id];
   const section = SECTIONS.find((s) => s.id === expert.sectionId)!;
   const cx = section.position[0];
   // safe stroll area: clear of the bed (west), workstations (north) and sofa (east)
@@ -1245,12 +1246,14 @@ function ExpertAvatar({
 /* ================= Playable character ================= */
 
 function Player({
+  experts,
   paused,
   bubbleText,
   positionRef,
   expertPositionsRef,
   onNearChange,
 }: {
+  experts: Expert[];
   paused: boolean;
   bubbleText: string | null;
   positionRef: React.MutableRefObject<Vector3>;
@@ -1329,7 +1332,7 @@ function Player({
     // proximity check for "press E" (experts move, so read live positions)
     let nearest: NearTarget | null = null;
     let best = TALK_RADIUS;
-    for (const expert of EXPERTS) {
+    for (const expert of experts) {
       const p = expertPositionsRef.current[expert.id];
       if (!p) continue;
       const d = Math.hypot(p.x - pos.x, p.z - pos.z);
@@ -1584,6 +1587,7 @@ function Grounds() {
 /* ================= Scene root ================= */
 
 export default function OfficeScene({
+  experts,
   selectedId,
   paused,
   playerBubble,
@@ -1591,6 +1595,7 @@ export default function OfficeScene({
   onSelectExpert,
   onNearChange,
 }: {
+  experts: Expert[];
   selectedId: string | null;
   paused: boolean;
   playerBubble: string | null;
@@ -1598,6 +1603,19 @@ export default function OfficeScene({
   onSelectExpert: (e: Expert | null) => void;
   onNearChange: (t: NearTarget | null) => void;
 }) {
+  // built-in residents keep their scripted stations; spawned people wander their room
+  const behaviors = useMemo(() => {
+    const map: Record<string, Behavior> = { ...STATIC_BEHAVIORS };
+    let j = 0;
+    for (const e of experts) {
+      if (map[e.id]) continue;
+      const section = SECTIONS.find((sec) => sec.id === e.sectionId) ?? SECTIONS[0];
+      const cx = section.position[0];
+      map[e.id] = { kind: "wandering", x: cx - 1 + (j % 3) * 1.2, z: -1.5 - (j % 2), face: 0 };
+      j++;
+    }
+    return map;
+  }, [experts]);
   const playerPos = useRef(new Vector3(0, 0, 13));
   const expertPositions = useRef<Record<string, { x: number; z: number }>>({});
   const [near, setNear] = useState<NearTarget | null>(null);
@@ -1644,10 +1662,11 @@ export default function OfficeScene({
       ))}
       <Reception active={nearVault} />
       <Receptionist />
-      {EXPERTS.map((expert, i) => (
+      {experts.map((expert, i) => (
         <ExpertAvatar
           key={expert.id}
           expert={expert}
+          behavior={behaviors[expert.id]}
           index={i}
           active={selectedId === expert.id || nearExpertId === expert.id}
           bubbleText={expertBubble?.id === expert.id ? expertBubble.text : null}
@@ -1657,6 +1676,7 @@ export default function OfficeScene({
       ))}
 
       <Player
+        experts={experts}
         paused={paused}
         bubbleText={playerBubble}
         positionRef={playerPos}
